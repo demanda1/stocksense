@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockSense — Dashboard</title>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117; --panel: #161b22; --border: #30363d;
+      --text: #e6edf3; --muted: #8b949e;
+      --green: #26a69a; --red: #ef5350; --accent: #58a6ff; --amber: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    header {
+      display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+      padding: 14px 22px; border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #161b22, #12161d);
+    }
+    header h1 { font-size: 18px; margin: 0; letter-spacing: 0.5px; font-weight: 700; }
+    header h1 span { color: var(--accent); }
+    .controls { display: flex; gap: 14px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+
+    /* ---- search group: input + magnify button ---- */
+    .search-group { display: flex; align-items: center; gap: 8px; }
+    .ac-wrap { position: relative; display: flex; align-items: center; }
+    .search-icon {
+      position: absolute; left: 12px; color: var(--muted); pointer-events: none;
+    }
+    #ticker {
+      width: 280px; padding: 10px 14px 10px 38px; font-size: 14px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      background: #0b0f15; color: var(--text);
+      border: 1.5px solid var(--border); border-radius: 10px;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    #ticker::placeholder { color: #5a6473; font-weight: 400; text-transform: none; letter-spacing: 0; }
+    #ticker:focus {
+      outline: none; border-color: var(--accent); background: #0d131c;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.22);
+    }
+    #ticker:focus + .search-icon, .ac-wrap:focus-within .search-icon { color: var(--accent); }
+    .search-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; padding: 0; border: none; border-radius: 10px;
+      background: var(--accent); color: #fff; cursor: pointer;
+      transition: filter 0.15s, transform 0.05s;
+    }
+    .search-btn:hover { filter: brightness(1.1); }
+    .search-btn:active { transform: scale(0.95); }
+
+    /* ---- timeframe dropdown ---- */
+    .tf-select {
+      appearance: none; -webkit-appearance: none;
+      background: #0b0f15 url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+      color: var(--text); border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 10px 34px 10px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .tf-select:hover { border-color: var(--accent); }
+    .tf-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,166,255,0.22); }
+
+    /* ---- Live slider switch + green dot ---- */
+    .live-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+    .live-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .switch {
+      position: relative; width: 38px; height: 22px; border-radius: 22px;
+      background: #2b313b; border: 1px solid var(--border); transition: background 0.18s;
+    }
+    .switch::after {
+      content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: #8b949e; transition: transform 0.18s, background 0.18s;
+    }
+    .live-toggle input:checked + .switch { background: rgba(38,166,154,0.55); border-color: var(--green); }
+    .live-toggle input:checked + .switch::after { transform: translateX(16px); background: #fff; }
+    .live-label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 0 0 rgba(38,166,154,0.7); opacity: 0; transition: opacity 0.18s;
+    }
+    .live-toggle input:checked ~ .live-dot { opacity: 1; animation: pulse 1.8s infinite; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(38,166,154,0.6); }
+      70% { box-shadow: 0 0 0 6px rgba(38,166,154,0); }
+      100% { box-shadow: 0 0 0 0 rgba(38,166,154,0); }
+    }
+
+    button { cursor: pointer; background: var(--accent); color: #fff; border: none; font-weight: 600; }
+    button:hover { opacity: 0.9; }
+    .status { font-size: 12px; color: var(--muted); }
+
+    .grid {
+      display: grid; gap: 14px; padding: 14px;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-areas:
+        "chart  chart  pattern"
+        "fund   sent   sent"
+        "indic  indic  indic"
+        "rec    rec    rec";
+    }
+    @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; grid-template-areas: "chart" "pattern" "fund" "sent" "indic" "rec"; } }
+
+    .box {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; display: flex; flex-direction: column;
+    }
+    .box h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    #chartBox { grid-area: chart; min-height: 420px; }
+    #patternBox { grid-area: pattern; }
+    #indicBox { grid-area: indic; }
+    #fundBox { grid-area: fund; }
+    #sentBox { grid-area: sent; }
+    #recBox { grid-area: rec; }
+
+    .chart { width: 100%; }
+    #mainChart { height: 380px; }
+    #rsiChart, #macdChart { height: 130px; }
+    .subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    /* chart legends */
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; }
+    .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+    .lg .lg-line, .lg .lg-candle { display: inline-block; flex: none; }
+    .lg-line { width: 16px; height: 3px; border-radius: 2px; }
+    .lg-dash { background: none !important; background-image: repeating-linear-gradient(90deg, var(--dash, #fff) 0 5px, transparent 5px 9px) !important; }
+    .lg-candle { width: 12px; height: 12px; border-radius: 2px; background: linear-gradient(180deg, var(--green) 50%, var(--red) 50%); }
+
+    .signal-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 13px; }
+    .bullish { background: rgba(38,166,154,0.18); color: var(--green); }
+    .bearish { background: rgba(239,83,80,0.18); color: var(--red); }
+    .neutral { background: rgba(139,148,158,0.18); color: var(--muted); }
+    .pattern-name { font-size: 22px; font-weight: 700; margin: 6px 0; }
+    .kv { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .kv:last-child { border-bottom: none; }
+    .kv span:first-child { color: var(--muted); }
+
+    /* color-coded fundamental metric values */
+    .metric-val { font-weight: 700; padding: 1px 8px; border-radius: 6px; }
+    .metric-good { color: var(--green); background: rgba(38,166,154,0.14); }
+    .metric-mid  { color: var(--amber); background: rgba(210,153,34,0.16); }
+    .metric-bad  { color: var(--red);   background: rgba(239,83,80,0.15); }
+    .metric-legend {
+      display: flex; gap: 14px; margin-top: 10px; font-size: 11px; color: var(--muted);
+    }
+    .metric-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .metric-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .metric-legend .dot.good { background: var(--green); }
+    .metric-legend .dot.mid  { background: var(--amber); }
+    .metric-legend .dot.bad  { background: var(--red); }
+    .conf-bar { height: 8px; border-radius: 4px; background: var(--bg); overflow: hidden; margin-top: 4px; }
+    .conf-fill { height: 100%; background: var(--accent); }
+    .rationale { font-size: 13px; color: var(--muted); line-height: 1.5; margin-top: 10px; }
+    .explain {
+      font-size: 13.5px; color: var(--text); line-height: 1.6; margin-top: 12px;
+      padding: 12px; background: var(--bg); border: 1px solid var(--border);
+      border-left: 3px solid var(--accent); border-radius: 6px;
+    }
+    .explain-head { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .ai-tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: rgba(88,166,255,0.18); color: var(--accent); }
+    .explain.loading { color: var(--muted); font-style: italic; }
+    .ssai-btn {
+      margin-top: 12px; background: linear-gradient(90deg, #58a6ff, #bc8cff);
+      color: #fff; border: none; border-radius: 6px; padding: 8px 14px;
+      font-size: 12.5px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .ssai-btn:hover { opacity: 0.9; }
+    .ssai-btn:disabled { opacity: 0.5; cursor: default; }
+    .ssai-btn .spark { font-size: 13px; }
+    .ssai-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    /* info "i" tooltip */
+    .info {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; margin-left: 5px; border-radius: 50%;
+      background: var(--border); color: var(--text); font-size: 10px;
+      font-style: normal; font-weight: 700; cursor: help; position: relative; vertical-align: middle;
+    }
+    .info:hover { background: var(--accent); }
+    .info .tip {
+      visibility: hidden; opacity: 0; transition: opacity 0.12s;
+      position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%);
+      width: 220px; background: #1c2530; color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px; font-size: 12px; font-weight: 400;
+      line-height: 1.45; text-transform: none; letter-spacing: normal; z-index: 20;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5); text-align: left;
+    }
+    .info .tip::after {
+      content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 5px solid transparent; border-top-color: #1c2530;
+    }
+    .info:hover .tip { visibility: visible; opacity: 1; }
+    .placeholder { color: var(--muted); font-size: 13px; font-style: italic; display: flex; align-items: center; justify-content: center; min-height: 80px; text-align: center; }
+    .disclaimer { font-size: 11px; color: var(--amber); margin-top: 10px; }
+    /* news cards */
+    .news-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-height: 340px; overflow-y: auto; padding-right: 4px; }
+    .news-card {
+      display: block; text-decoration: none; padding: 10px 12px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      transition: background 0.12s, border-color 0.12s, transform 0.06s;
+    }
+    a.news-card:hover { background: #1b2230; border-left-color: #bc8cff; transform: translateX(2px); }
+    .news-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
+    a.news-card .news-title { color: var(--accent); }
+    a.news-card:hover .news-title { text-decoration: underline; }
+    .news-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 11px; color: var(--muted); }
+    .news-source { font-weight: 600; color: #7aa2d6; }
+    .news-meta .sep { opacity: 0.5; }
+    .news-ext { margin-left: auto; opacity: 0.6; font-size: 11px; }
+    .news-list::-webkit-scrollbar { width: 6px; }
+    .news-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .action-badge { display: inline-block; padding: 6px 18px; border-radius: 8px; font-weight: 800; font-size: 18px; letter-spacing: 1px; }
+    .buy { background: rgba(38,166,154,0.2); color: var(--green); }
+    .sell { background: rgba(239,83,80,0.2); color: var(--red); }
+    .hold { background: rgba(210,153,34,0.2); color: var(--amber); }
+    footer { text-align: center; padding: 12px; font-size: 11px; color: var(--muted); }
+    .err { color: var(--red); font-size: 13px; }
+
+    /* ticker autocomplete */
+    .ac-list {
+      position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
+      width: 100%; min-width: 300px; max-height: 320px; overflow-y: auto;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.55); display: none;
+    }
+    .ac-list.open { display: block; }
+    .ac-item {
+      display: flex; flex-direction: column; gap: 1px; padding: 8px 12px;
+      cursor: pointer; border-bottom: 1px solid var(--border);
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item.active, .ac-item:hover { background: rgba(88,166,255,0.14); }
+    .ac-sym { font-size: 13px; font-weight: 700; color: var(--text); }
+    .ac-sym mark { background: transparent; color: var(--accent); }
+    .ac-name { font-size: 11.5px; color: var(--muted); }
+    .ac-empty { padding: 10px 12px; font-size: 12px; color: var(--muted); font-style: italic; }
+
+    /* ===== tabs ===== */
+    .brand { display: flex; align-items: center; gap: 22px; }
+    .tabs { display: flex; gap: 6px; }
+    .tab {
+      background: transparent; color: var(--muted); border: none; border-radius: 8px;
+      padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .tab.active { color: #fff; background: var(--accent); }
+
+    /* ===== playground ===== */
+    .pg-walletbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      margin: 14px; padding: 16px 20px; border-radius: 12px;
+      background: linear-gradient(120deg, #14202b, #161b22); border: 1px solid var(--border);
+    }
+    .pg-wallet { display: flex; gap: 32px; flex-wrap: wrap; }
+    .pg-wallet-item { display: flex; flex-direction: column; gap: 3px; }
+    .pg-wlabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+    .pg-wval { font-size: 22px; font-weight: 800; color: var(--text); }
+    .pg-wallet-actions { display: flex; gap: 10px; }
+    .pg-btn { border: none; border-radius: 9px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .pg-btn-add { background: var(--green); color: #04231f; }
+    .pg-btn-add:hover { filter: brightness(1.08); }
+    .pg-btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .pg-btn-ghost:hover { color: var(--red); border-color: var(--red); }
+
+    .pg-grid {
+      display: grid; gap: 14px; padding: 0 14px 14px;
+      grid-template-columns: 360px 1fr;
+    }
+    @media (max-width: 900px) { .pg-grid { grid-template-columns: 1fr; } }
+
+    .pg-ticket .pg-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .pg-ticket .pg-field > span { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .pg-ticket input, .pg-ticket select {
+      background: #0b0f15; color: var(--text); border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 9px 11px; font-size: 14px; width: 100%;
+    }
+    .pg-ticket input:focus, .pg-ticket select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,166,255,0.2); }
+    .pg-row { display: flex; gap: 10px; }
+    .pg-row .pg-field { flex: 1; }
+
+    .pg-sidebtns { display: flex; gap: 8px; margin-bottom: 14px; }
+    .pg-side { flex: 1; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; border: 1.5px solid var(--border); background: #0b0f15; }
+    .pg-buy { color: var(--green); }
+    .pg-sell { color: var(--red); }
+    .pg-buy.active { background: rgba(38,166,154,0.18); border-color: var(--green); }
+    .pg-sell.active { background: rgba(239,83,80,0.18); border-color: var(--red); }
+
+    .pg-ltp { font-size: 13px; color: var(--muted); margin: -4px 0 12px; }
+    .pg-ltp #pgLtp { color: var(--text); font-weight: 700; }
+    .pg-ot-help { font-size: 11px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+    .pg-premium { font-size: 12px; color: var(--accent); background: rgba(88,166,255,0.1); border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; }
+    .pg-cost { font-size: 13px; color: var(--text); margin: 6px 0 12px; font-weight: 600; }
+    .pg-place {
+      width: 100%; padding: 13px; border: none; border-radius: 9px; font-size: 15px; font-weight: 800;
+      cursor: pointer; background: var(--green); color: #04231f; letter-spacing: 0.4px;
+    }
+    .pg-place.sell { background: var(--red); color: #2a0a09; }
+    .pg-place:hover { filter: brightness(1.08); }
+    .pg-msg { font-size: 12.5px; margin-top: 10px; min-height: 16px; }
+    .pg-msg.ok { color: var(--green); }
+    .pg-msg.bad { color: var(--red); }
+
+    .pg-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .pg-tab {
+      background: transparent; border: none; color: var(--muted); padding: 8px 14px; font-size: 13px;
+      font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .pg-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .pg-count { font-size: 11px; background: var(--border); border-radius: 10px; padding: 1px 7px; margin-left: 2px; }
+
+    .pg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .pg-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--border); font-weight: 600; }
+    .pg-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); }
+    .pg-table tr:last-child td { border-bottom: none; }
+    .pg-sym-cell { font-weight: 700; }
+    .pg-tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: var(--border); color: var(--muted); margin-left: 6px; }
+    .pg-tag.buy { background: rgba(38,166,154,0.18); color: var(--green); }
+    .pg-tag.sell { background: rgba(239,83,80,0.18); color: var(--red); }
+    .pg-pnl-pos { color: var(--green); font-weight: 700; }
+    .pg-pnl-neg { color: var(--red); font-weight: 700; }
+    .pg-sqoff { background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    .pg-sqoff:hover { border-color: var(--accent); color: var(--accent); }
+    .pg-cancel { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    .pg-cancel:hover { border-color: var(--red); color: var(--red); }
+    .pg-status-pill { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
+    .pg-status-PENDING { background: rgba(210,153,34,0.18); color: var(--amber); }
+    .pg-status-EXECUTED { background: rgba(38,166,154,0.18); color: var(--green); }
+    .pg-status-CANCELLED { background: rgba(139,148,158,0.18); color: var(--muted); }
+    .pg-empty { text-align: center; color: var(--muted); font-style: italic; font-size: 13px; padding: 24px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Stock<span>Sense</span></h1>
+      <nav class="tabs">
+        <button class="tab active" data-view="dashboard">Dashboard</button>
+        <button class="tab" data-view="playground">Playground</button>
+      </nav>
+    </div>
+    <div class="controls" id="dashControls">
+      <div class="search-group">
+        <div class="ac-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+            <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="ticker" value="PERSISTENT" placeholder="Search symbol or company…"
+                 autocomplete="off" spellcheck="false" />
+          <div class="ac-list" id="acList"></div>
+        </div>
+        <button id="loadBtn" class="search-btn" title="Search" aria-label="Search">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <select id="tfSelect" class="tf-select" title="Timeframe">
+        <option value="1D">1D · Daily</option>
+        <option value="1W">1W · Weekly</option>
+        <option value="5m">5m · Intraday</option>
+      </select>
+
+      <label class="live-toggle" title="Auto-refresh">
+        <input type="checkbox" id="liveToggle" checked />
+        <span class="switch"></span>
+        <span class="live-label">Live</span>
+        <span class="live-dot"></span>
+      </label>
+
+      <span class="status" id="status">—</span>
+    </div>
+  </header>
+
+  <div class="grid" id="dashboardView">
+    <div class="box" id="chartBox">
+      <h2>Technical Analysis · <span id="symLabel">—</span></h2>
+      <div id="mainChart" class="chart"></div>
+      <div class="legend">
+        <span class="lg"><i class="lg-candle"></i>Price<i class="info">i<span class="tip">Each candle shows the open, high, low and close for one period. Green = closed higher than it opened, red = closed lower.</span></i></span>
+        <span class="lg"><i class="lg-line" style="background:#58a6ff"></i>SMA 20<i class="info">i<span class="tip">Simple Moving Average over the last 20 candles — the short-term average price. Reacts quickly to recent moves; price above it suggests short-term strength.</span></i></span>
+        <span class="lg"><i class="lg-line" style="background:#d29922"></i>SMA 50<i class="info">i<span class="tip">Simple Moving Average over the last 50 candles — the medium-term trend. Slower than SMA 20; when SMA 20 crosses above SMA 50 it's often read as bullish.</span></i></span>
+        <span class="lg"><i class="lg-line" style="background:rgba(139,148,158,0.8)"></i>Bollinger bands<i class="info">i<span class="tip">Two bands plotted 2 standard deviations above and below the 20-period average. They widen when the stock is volatile and narrow when calm; price near the upper band can mean overbought, near the lower band oversold.</span></i></span>
+        <span class="lg"><i class="lg-line lg-dash" style="--dash:#ff79c6"></i>Projected target<i class="info">i<span class="tip">A dashed line from the current price to the pattern's measured-move target. An educational projection, not a guarantee.</span></i></span>
+      </div>
+    </div>
+
+    <div class="box" id="patternBox">
+      <h2>Pattern + Prediction</h2>
+      <div id="patternBody"><div class="placeholder">Load a ticker to detect a pattern.</div></div>
+    </div>
+
+    <div class="box" id="indicBox">
+      <h2>Momentum</h2>
+      <div class="subgrid">
+        <div>
+          <div class="status" id="rsiHead">RSI (14)</div>
+          <div id="rsiChart" class="chart"></div>
+          <div class="legend">
+            <span class="lg"><i class="lg-line" style="background:#bc8cff"></i>RSI</span>
+            <span class="lg"><i class="lg-line lg-dash" style="--dash:#8b949e"></i>70 / 30 bands</span>
+          </div>
+        </div>
+        <div>
+          <div class="status" id="macdHead">MACD (12,26,9)</div>
+          <div id="macdChart" class="chart"></div>
+          <div class="legend">
+            <span class="lg"><i class="lg-line" style="background:#58a6ff"></i>MACD line</span>
+            <span class="lg"><i class="lg-line" style="background:#d29922"></i>Signal line</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="box" id="fundBox">
+      <h2>Fundamentals <span id="fundAi"></span></h2>
+      <div id="fundBody"><div class="placeholder">Load a ticker to see fundamentals.</div></div>
+    </div>
+
+    <div class="box" id="sentBox">
+      <h2>Sentiment <span id="sentAi"></span></h2>
+      <div id="sentBody"><div class="placeholder">Load a ticker to see news sentiment.</div></div>
+    </div>
+
+    <div class="box" id="recBox">
+      <h2>Recommendation</h2>
+      <div id="recBody">
+        <div class="placeholder">A buy / hold / sell call combining all three analyses.</div>
+        <button class="ssai-btn" id="recBtn"><span class="spark">✦</span> SSAI · Run advisor</button>
+        <div class="ssai-hint">AI runs only when you click — saves your API quota.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== PLAYGROUND VIEW ===================== -->
+  <div id="playgroundView" style="display:none">
+    <!-- Wallet bar -->
+    <div class="pg-walletbar">
+      <div class="pg-wallet">
+        <div class="pg-wallet-item">
+          <span class="pg-wlabel">Cash balance <i class="info">i<span class="tip">Your dummy buying power. Add as much virtual money as you like — no real funds involved.</span></i></span>
+          <span class="pg-wval" id="pgCash">₹0</span>
+        </div>
+        <div class="pg-wallet-item">
+          <span class="pg-wlabel">Invested <i class="info">i<span class="tip">Value of your open positions at their entry price.</span></i></span>
+          <span class="pg-wval" id="pgInvested">₹0</span>
+        </div>
+        <div class="pg-wallet-item">
+          <span class="pg-wlabel">Open P&amp;L <i class="info">i<span class="tip">Unrealised profit/loss on open positions at the latest price.</span></i></span>
+          <span class="pg-wval" id="pgOpenPnl">₹0</span>
+        </div>
+        <div class="pg-wallet-item">
+          <span class="pg-wlabel">Total equity <i class="info">i<span class="tip">Cash + current value of all open positions. Your net worth in the playground.</span></i></span>
+          <span class="pg-wval" id="pgEquity">₹0</span>
+        </div>
+      </div>
+      <div class="pg-wallet-actions">
+        <button class="pg-btn pg-btn-add" id="pgAddFunds">+ Add funds</button>
+        <button class="pg-btn pg-btn-ghost" id="pgReset" title="Wipe wallet, positions and history">Reset</button>
+      </div>
+    </div>
+
+    <div class="pg-grid">
+      <!-- Order ticket -->
+      <div class="box pg-ticket">
+        <h2>Place order</h2>
+
+        <div class="pg-sidebtns">
+          <button class="pg-side pg-buy active" data-side="BUY">BUY</button>
+          <button class="pg-side pg-sell" data-side="SELL">SELL</button>
+        </div>
+
+        <label class="pg-field">
+          <span>Symbol</span>
+          <div class="ac-wrap">
+            <input id="pgSymbol" value="RELIANCE" placeholder="Search symbol…" autocomplete="off" spellcheck="false"/>
+            <div class="ac-list" id="pgAcList"></div>
+          </div>
+        </label>
+        <div class="pg-ltp">LTP: <span id="pgLtp">—</span> <span class="pg-ltp-sym" id="pgLtpSym"></span></div>
+
+        <label class="pg-field">
+          <span>Segment
+            <i class="info">i<span class="tip">Intraday = buy & sell equity the same day. Futures = leveraged contract on the stock. Options = right to buy (CE) / sell (PE) at a strike.</span></i>
+          </span>
+          <select id="pgSegment" class="tf-select" style="width:100%">
+            <option value="INTRADAY">Intraday (Equity)</option>
+            <option value="FUTURES">Futures</option>
+            <option value="OPTIONS">Options</option>
+          </select>
+        </label>
+
+        <!-- F&O extra fields -->
+        <div id="pgFnoFields" style="display:none">
+          <div class="pg-row">
+            <label class="pg-field">
+              <span>Lots <i class="info">i<span class="tip">F&O trade in fixed lot sizes. Total quantity = lots × lot size.</span></i></span>
+              <input id="pgLots" type="number" min="1" value="1"/>
+            </label>
+            <label class="pg-field" id="pgExpiryWrap">
+              <span>Expiry <i class="info">i<span class="tip">The date the contract settles. Nearer expiries are cheaper but decay faster.</span></i></span>
+              <select id="pgExpiry"></select>
+            </label>
+          </div>
+          <div class="pg-row" id="pgOptionRow" style="display:none">
+            <label class="pg-field">
+              <span>Type <i class="info">i<span class="tip">Call (CE) profits if price rises above the strike. Put (PE) profits if price falls below it.</span></i></span>
+              <select id="pgOptType"><option value="CE">Call (CE)</option><option value="PE">Put (PE)</option></select>
+            </label>
+            <label class="pg-field">
+              <span>Strike <i class="info">i<span class="tip">The price level the option is set against. Premium depends on how far the strike is from the current price.</span></i></span>
+              <select id="pgStrike"></select>
+            </label>
+          </div>
+          <div class="pg-premium" id="pgPremium" style="display:none"></div>
+        </div>
+
+        <label class="pg-field" id="pgQtyWrap">
+          <span>Quantity</span>
+          <input id="pgQty" type="number" min="1" value="1"/>
+        </label>
+
+        <label class="pg-field">
+          <span>Order type</span>
+          <select id="pgOrderType" class="tf-select" style="width:100%">
+            <option value="MARKET">Market</option>
+            <option value="LIMIT">Limit</option>
+            <option value="SL">SL (Stop-Loss Limit)</option>
+            <option value="SL-M">SL-M (Stop-Loss Market)</option>
+          </select>
+          <span class="pg-ot-help" id="pgOtHelp"></span>
+        </label>
+
+        <label class="pg-field" id="pgLimitWrap" style="display:none">
+          <span>Limit price <i class="info">i<span class="tip">The exact price you want. Buy fills at or below it; sell fills at or above it.</span></i></span>
+          <input id="pgLimit" type="number" step="0.05"/>
+        </label>
+        <label class="pg-field" id="pgTriggerWrap" style="display:none">
+          <span>Trigger price <i class="info">i<span class="tip">When the market reaches this price, your stop order activates.</span></i></span>
+          <input id="pgTrigger" type="number" step="0.05"/>
+        </label>
+
+        <div class="pg-cost" id="pgCost">Order value: —</div>
+        <button class="pg-place" id="pgPlace">Place BUY order</button>
+        <div class="pg-msg" id="pgMsg"></div>
+      </div>
+
+      <!-- Positions / orders / history -->
+      <div class="box pg-book">
+        <div class="pg-tabs">
+          <button class="pg-tab active" data-tab="positions">Positions <span class="pg-count" id="pgPosCount">0</span></button>
+          <button class="pg-tab" data-tab="orders">Orders <span class="pg-count" id="pgOrdCount">0</span></button>
+          <button class="pg-tab" data-tab="history">History</button>
+        </div>
+        <div class="pg-panel" id="pgPanelPositions"></div>
+        <div class="pg-panel" id="pgPanelOrders" style="display:none"></div>
+        <div class="pg-panel" id="pgPanelHistory" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Educational use only — not financial advice. Price data via yfinance (delayed ~15 min). Playground uses virtual money.</footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let tf = "1D";
+    let pollTimer = null;
+    const POLL_MS = 30000;
+
+    // Cache of AI results so the 30s poll's re-render doesn't wipe them.
+    // Keyed by grid; invalidated when the ticker changes.
+    const aiCache = {}; // { explain: {ticker, html, tag}, fund: {...}, sent: {...} }
+    function cacheKey() { return $("ticker").value.trim().toUpperCase(); }
+    function restoreAI(grid, slotId, headerId) {
+      const c = aiCache[grid];
+      const slot = $(slotId);
+      if (!slot || !c || c.ticker !== cacheKey()) return false;
+      slot.innerHTML = c.html;
+      if (headerId && c.tag) $(headerId).innerHTML = c.tag;
+      return true;
+    }
+    function clearStaleAI() {
+      const t = cacheKey();
+      for (const k of Object.keys(aiCache)) if (aiCache[k].ticker !== t) delete aiCache[k];
+      // Reset the recommendation box if it was run for a different ticker.
+      const rec = $("recBody");
+      if (rec && rec.dataset.ticker && rec.dataset.ticker !== t) {
+        rec.dataset.ticker = "";
+        rec.innerHTML = `
+          <div class="placeholder">A buy / hold / sell call combining all three analyses.</div>
+          <button class="ssai-btn" id="recBtn"><span class="spark">✦</span> SSAI · Run advisor</button>
+          <div class="ssai-hint">AI runs only when you click — saves your API quota.</div>`;
+      }
+    }
+
+    // --- chart setup ---
+    const chartOpts = {
+      layout: { background: { color: "#161b22" }, textColor: "#8b949e" },
+      grid: { vertLines: { color: "#21262d" }, horzLines: { color: "#21262d" } },
+      timeScale: { timeVisible: true, borderColor: "#30363d" },
+      rightPriceScale: { borderColor: "#30363d" },
+      crosshair: { mode: 0 },
+    };
+    const main = LightweightCharts.createChart($("mainChart"), chartOpts);
+    const candleSeries = main.addCandlestickSeries({ upColor: "#26a69a", downColor: "#ef5350", borderVisible: false, wickUpColor: "#26a69a", wickDownColor: "#ef5350" });
+    const sma20Series = main.addLineSeries({ color: "#58a6ff", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    const sma50Series = main.addLineSeries({ color: "#d29922", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    const bbUpper = main.addLineSeries({ color: "rgba(139,148,158,0.5)", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    const bbLower = main.addLineSeries({ color: "rgba(139,148,158,0.5)", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    const projSeries = main.addLineSeries({ color: "#ff79c6", lineWidth: 2, lineStyle: 2, priceLineVisible: false, lastValueVisible: true, title: "target" });
+
+    const rsi = LightweightCharts.createChart($("rsiChart"), { ...chartOpts });
+    const rsiLine = rsi.addLineSeries({ color: "#bc8cff", lineWidth: 1 });
+    // 70 / 30 overbought / oversold reference bands
+    rsiLine.createPriceLine({ price: 70, color: "rgba(139,148,158,0.6)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" });
+    rsiLine.createPriceLine({ price: 30, color: "rgba(139,148,158,0.6)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" });
+    const macd = LightweightCharts.createChart($("macdChart"), { ...chartOpts });
+    const macdLine = macd.addLineSeries({ color: "#58a6ff", lineWidth: 1 });
+    const macdSignal = macd.addLineSeries({ color: "#d29922", lineWidth: 1 });
+
+    new ResizeObserver(() => {
+      main.applyOptions({ width: $("mainChart").clientWidth });
+      rsi.applyOptions({ width: $("rsiChart").clientWidth });
+      macd.applyOptions({ width: $("macdChart").clientWidth });
+    }).observe(document.body);
+
+    async function loadCandles(ticker) {
+      const res = await fetch(`/candles?ticker=${encodeURIComponent(ticker)}&tf=${tf}`);
+      if (!res.ok) throw new Error((await res.json()).detail || "candles failed");
+      const d = await res.json();
+      $("symLabel").textContent = d.symbol;
+      candleSeries.setData(d.candles);
+      sma20Series.setData(d.sma20);
+      sma50Series.setData(d.sma50);
+      bbUpper.setData(d.bb_upper);
+      bbLower.setData(d.bb_lower);
+      rsiLine.setData(d.rsi);
+      macdLine.setData(d.macd);
+      macdSignal.setData(d.macd_signal);
+    }
+
+    async function loadPattern(ticker) {
+      const res = await fetch(`/pattern?ticker=${encodeURIComponent(ticker)}&tf=${tf}`);
+      if (!res.ok) { projSeries.setData([]); renderPatternError((await res.json()).detail); return; }
+      const p = await res.json();
+      projSeries.setData(p.projection || []);
+      renderPattern(p);
+    }
+
+    function sigClass(s) { return s === "bullish" ? "bullish" : s === "bearish" ? "bearish" : "neutral"; }
+
+    // Beginner glossary shown in the "i" tooltips.
+    const GLOSSARY = {
+      pattern: "A recognizable shape the price has drawn on the chart (e.g. Double Bottom). Traders use these shapes to guess what price might do next.",
+      signal: "The likely direction the pattern points to. Bullish = upward bias, Bearish = downward bias, Neutral = unclear.",
+      current: "The latest traded price of the stock right now.",
+      breakout: "The key price line (also called the 'neckline'). The pattern is only considered confirmed once price clearly moves past this level, ideally on high volume.",
+      target: "A textbook price estimate for how far the move could go, measured from the size of the pattern. It is a rough projection, not a guarantee.",
+      move: "How big the projected move is, as a percentage from the current price to the measured target.",
+      confidence: "How cleanly the price data fits this pattern's shape (0–100%). Higher means a tidier, more textbook pattern — not a probability of profit.",
+      rsi: "Relative Strength Index (0–100): measures how fast price has moved. Above 70 is often called 'overbought' (may pull back); below 30 'oversold' (may bounce).",
+      macd: "Moving Average Convergence Divergence: compares two trend lines. When the blue line crosses above the orange signal line it hints at upward momentum; below, downward.",
+      fund_signal: "The AI's read of the company's financial health (bullish / neutral / bearish), based on valuation, growth, margins, and debt.",
+      sent_signal: "The AI's read of recent news mood (bullish / neutral / bearish), based on the headlines below.",
+      action: "The advisor's overall call — Buy, Hold, or Sell — combining fundamentals, technicals, and sentiment, weighted by your risk profile.",
+      sma20: "Simple Moving Average over the last 20 candles — the short-term average price. Reacts quickly to recent moves; price above it suggests short-term strength.",
+      sma50: "Simple Moving Average over the last 50 candles — the medium-term trend. Slower than SMA 20; when SMA 20 crosses above SMA 50 it's often read as bullish.",
+      bollinger: "Two bands plotted 2 standard deviations above and below the 20-period average. They widen when the stock is volatile and narrow when it's calm; price near the upper band can mean overbought, near the lower band oversold.",
+      price: "Each candle shows the open, high, low and close for one period. Green = closed higher than it opened, red = closed lower.",
+      projected: "A dashed line from the current price to the pattern's measured-move target. It's an educational projection, not a guarantee.",
+    };
+    function info(key) {
+      return `<i class="info">i<span class="tip">${GLOSSARY[key]}</span></i>`;
+    }
+
+    function renderPattern(p) {
+      const tgt = p.target != null ? `₹${p.target}` : "—";
+      const brk = p.breakout_level != null ? `₹${p.breakout_level}` : "—";
+      const move = p.projected_move_pct != null ? `${p.projected_move_pct > 0 ? "+" : ""}${p.projected_move_pct}%` : "—";
+      $("patternBody").innerHTML = `
+        <div class="pattern-name">${p.pattern}${info("pattern")}</div>
+        <span class="signal-badge ${sigClass(p.signal)}">${p.signal.toUpperCase()}</span>${info("signal")}
+        <div style="margin-top:12px">
+          <div class="kv"><span>Current${info("current")}</span><span>₹${p.current_price}</span></div>
+          <div class="kv"><span>Breakout level${info("breakout")}</span><span>${brk}</span></div>
+          <div class="kv"><span>Measured target${info("target")}</span><span style="color:#ff79c6;font-weight:700">${tgt}</span></div>
+          <div class="kv"><span>Projected move${info("move")}</span><span>${move}</span></div>
+        </div>
+        <div style="margin-top:12px"><span class="status">Confidence: ${p.confidence}%${info("confidence")}</span>
+          <div class="conf-bar"><div class="conf-fill" style="width:${p.confidence}%"></div></div></div>
+        <div class="rationale">${p.rationale}</div>
+        <div id="explainSlot">${p.target != null ? ssaiButton("explainBtn", "Explain this pattern") : ""}</div>
+        <div class="disclaimer">⚠ ${p.disclaimer}</div>`;
+      restoreAI("explain", "explainSlot");
+    }
+
+    // A reusable SSAI button. AI runs only when clicked — never on the poll.
+    function ssaiButton(id, label) {
+      return `<button class="ssai-btn" id="${id}"><span class="spark">✦</span> SSAI · ${label}</button>
+              <div class="ssai-hint">AI runs only when you click — saves your API quota.</div>`;
+    }
+
+    async function loadExplanation(ticker) {
+      const slot = $("explainSlot");
+      if (!slot) return;
+      slot.innerHTML = `<div class="explain loading">Generating plain-English explanation…</div>`;
+      try {
+        const res = await fetch(`/pattern-explain?ticker=${encodeURIComponent(ticker)}&tf=${tf}`);
+        if (!res.ok) { slot.innerHTML = ssaiButton("explainBtn", "Explain this pattern"); return; }
+        const d = await res.json();
+        const tag = d.source === "ai"
+          ? `<span class="ai-tag">AI</span>`
+          : `<span class="ai-tag" style="background:rgba(139,148,158,0.18);color:var(--muted)">auto</span>`;
+        const html = `<div class="explain"><div class="explain-head">What this means ${tag}</div>${d.explanation}</div>`;
+        slot.innerHTML = html;
+        aiCache.explain = { ticker, html };
+      } catch (e) {
+        slot.innerHTML = ssaiButton("explainBtn", "Explain this pattern");
+      }
+    }
+    function renderPatternError(msg) {
+      $("patternBody").innerHTML = `<div class="placeholder err">${msg || "No pattern detected."}</div>`;
+    }
+
+    // --- News card rendering (clickable when a URL is present) ---
+    function esc(s) {
+      return (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+    function relTime(published) {
+      if (!published) return "";
+      const t = Date.parse(published);
+      if (isNaN(t)) return "";
+      const mins = Math.round((Date.now() - t) / 60000);
+      if (mins < 1) return "just now";
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.round(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.round(hrs / 24);
+      return days < 30 ? `${days}d ago` : "";
+    }
+    function newsCard(n) {
+      const title = esc(n.title);
+      const source = esc(n.source);
+      const when = relTime(n.published);
+      const meta = `
+        <div class="news-meta">
+          ${source ? `<span class="news-source">${source}</span>` : ""}
+          ${source && when ? `<span class="sep">·</span>` : ""}
+          ${when ? `<span>${when}</span>` : ""}
+          ${n.url ? `<span class="news-ext">↗ open</span>` : ""}
+        </div>`;
+      if (n.url) {
+        return `<a class="news-card" href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">
+                  <div class="news-title">${title}</div>${meta}</a>`;
+      }
+      return `<div class="news-card"><div class="news-title">${title}</div>${meta}</div>`;
+    }
+
+    function aiTag(isAi) {
+      return isAi
+        ? `<span class="ai-tag">AI</span>`
+        : `<span class="ai-tag" style="background:rgba(139,148,158,0.18);color:var(--muted)">data</span>`;
+    }
+    const pct = (v) => v == null ? "—" : `${(v * 100).toFixed(1)}%`;
+    const num = (v) => v == null ? "—" : (typeof v === "number" ? v.toLocaleString() : v);
+
+    // Math-based rating for each fundamental metric → 'good' | 'mid' | 'bad'.
+    // Note: revenue_growth / profit_margin / roe arrive as fractions (e.g. 0.16).
+    // debt_to_equity is on yfinance's scale (e.g. 80 ≈ 0.8x).
+    function metricRating(key, v) {
+      if (v == null || Number.isNaN(v)) return "";
+      switch (key) {
+        case "pe":     return v <= 0 ? "bad" : v <= 25 ? "good" : v <= 40 ? "mid" : "bad";
+        case "eps":    return v < 0 ? "bad" : v < 1 ? "mid" : "good";
+        case "growth": return v < 0 ? "bad" : v < 0.10 ? "mid" : "good";
+        case "margin": return v < 0.05 ? "bad" : v < 0.15 ? "mid" : "good";
+        case "roe":    return v < 0.08 ? "bad" : v < 0.15 ? "mid" : "good";
+        case "de":     return v > 100 ? "bad" : v > 50 ? "mid" : "good";
+        default:       return "";
+      }
+    }
+    function metricRow(label, rawValue, key, display) {
+      const rating = metricRating(key, rawValue);
+      const cls = rating ? ` metric-${rating}` : "";
+      return `<div class="kv"><span>${label}</span><span class="metric-val${cls}">${display}</span></div>`;
+    }
+
+    // --- Fundamentals box: raw metrics always (free). AI signal on SSAI click. ---
+    async function loadFundamentals(ticker) {
+      $("fundAi").innerHTML = "";
+      try {
+        const res = await fetch(`/fundamentals?ticker=${encodeURIComponent(ticker)}&ai=false`);
+        if (!res.ok) { $("fundBody").innerHTML = `<div class="placeholder err">${(await res.json()).detail}</div>`; return; }
+        const d = await res.json();
+        const m = d.metrics;
+        $("fundBody").innerHTML = `
+          <div style="margin-top:0">
+            <div class="kv"><span>Company</span><span>${m.name || "—"}</span></div>
+            ${metricRow("P/E ratio", m.pe_ratio, "pe", m.pe_ratio != null ? m.pe_ratio.toFixed(1) : "—")}
+            ${metricRow("EPS (TTM)", m.eps_ttm, "eps", num(m.eps_ttm))}
+            ${metricRow("Revenue growth", m.revenue_growth, "growth", pct(m.revenue_growth))}
+            ${metricRow("Profit margin", m.profit_margin, "margin", pct(m.profit_margin))}
+            ${metricRow("ROE", m.roe, "roe", pct(m.roe))}
+            ${metricRow("Debt / equity", m.debt_to_equity, "de", m.debt_to_equity != null ? m.debt_to_equity.toFixed(1) : "—")}
+          </div>
+          <div class="metric-legend">
+            <span><i class="dot good"></i>Good</span>
+            <span><i class="dot mid"></i>Neutral</span>
+            <span><i class="dot bad"></i>Weak</span>
+          </div>
+          <div id="fundAiSlot">${ssaiButton("fundBtn", "Analyse fundamentals")}</div>`;
+        restoreAI("fund", "fundAiSlot", "fundAi");
+      } catch (e) {
+        $("fundBody").innerHTML = `<div class="placeholder err">Could not load fundamentals.</div>`;
+      }
+    }
+
+    async function runFundamentalsAI(ticker) {
+      const slot = $("fundAiSlot");
+      if (!slot) return;
+      slot.innerHTML = `<div class="explain loading">Analysing fundamentals…</div>`;
+      try {
+        const res = await fetch(`/fundamentals?ticker=${encodeURIComponent(ticker)}&ai=true`);
+        const d = await res.json();
+        if (!res.ok || !d.signal) { slot.innerHTML = ssaiButton("fundBtn", "Analyse fundamentals"); return; }
+        const tag = aiTag(d.ai);
+        $("fundAi").innerHTML = tag;
+        const html = `
+          <div style="margin-top:4px"><span class="signal-badge ${sigClass(d.signal)}">${d.signal.toUpperCase()}</span>${info("fund_signal")}</div>
+          ${d.reasoning ? `<div class="explain" style="margin-top:10px"><div class="explain-head">Analysis ${tag}</div>${d.reasoning}</div>` : ""}`;
+        slot.innerHTML = html;
+        aiCache.fund = { ticker, html, tag };
+      } catch (e) {
+        slot.innerHTML = ssaiButton("fundBtn", "Analyse fundamentals");
+      }
+    }
+
+    // --- Sentiment box: headlines always (free). AI signal on SSAI click. ---
+    async function loadSentiment(ticker) {
+      $("sentAi").innerHTML = "";
+      try {
+        const res = await fetch(`/sentiment?ticker=${encodeURIComponent(ticker)}&ai=false`);
+        if (!res.ok) { $("sentBody").innerHTML = `<div class="placeholder err">${(await res.json()).detail}</div>`; return; }
+        const d = await res.json();
+        const cards = (d.news || []).map(newsCard).join("");
+        $("sentBody").innerHTML = `
+          <div id="sentAiSlot">${ssaiButton("sentBtn", "Analyse sentiment")}</div>
+          <div class="news-list">${cards || `<div class="placeholder">No recent headlines found.</div>`}</div>`;
+        restoreAI("sent", "sentAiSlot", "sentAi");
+      } catch (e) {
+        $("sentBody").innerHTML = `<div class="placeholder err">Could not load news.</div>`;
+      }
+    }
+
+    async function runSentimentAI(ticker) {
+      const slot = $("sentAiSlot");
+      if (!slot) return;
+      slot.innerHTML = `<div class="explain loading">Reading the news…</div>`;
+      try {
+        const res = await fetch(`/sentiment?ticker=${encodeURIComponent(ticker)}&ai=true`);
+        const d = await res.json();
+        if (!res.ok || !d.signal) { slot.innerHTML = ssaiButton("sentBtn", "Analyse sentiment"); return; }
+        const tag = aiTag(d.ai);
+        $("sentAi").innerHTML = tag;
+        const html = `
+          <div><span class="signal-badge ${sigClass(d.signal)}">${d.signal.toUpperCase()}</span>${info("sent_signal")}</div>
+          ${d.reasoning ? `<div class="explain" style="margin-top:10px"><div class="explain-head">Analysis ${tag}</div>${d.reasoning}</div>` : ""}`;
+        slot.innerHTML = html;
+        aiCache.sent = { ticker, html, tag };
+      } catch (e) {
+        slot.innerHTML = ssaiButton("sentBtn", "Analyse sentiment");
+      }
+    }
+
+    // --- Recommendation box (LLM-only, on demand) ---
+    async function loadRecommendation(ticker) {
+      $("recBody").innerHTML = `<div class="placeholder loading">Running AI advisor across fundamentals, technicals & sentiment…</div>`;
+      try {
+        const res = await fetch(`/recommendation?ticker=${encodeURIComponent(ticker)}&risk=moderate`);
+        if (!res.ok) {
+          const msg = (await res.json()).detail;
+          $("recBody").innerHTML = `<div class="placeholder err">${msg}</div>
+            <button class="ssai-btn" id="recBtn"><span class="spark">✦</span> SSAI · Retry</button>`;
+          return;
+        }
+        const d = await res.json();
+        const r = d.recommendation;
+        $("recBody").dataset.ticker = ticker;
+        $("recBody").innerHTML = `
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="action-badge ${r.action}">${r.action.toUpperCase()}</span>${info("action")}
+            <span class="status">Confidence ${r.confidence}% · ${r.risk_profile} risk</span>
+          </div>
+          <div class="conf-bar" style="margin-top:10px"><div class="conf-fill" style="width:${r.confidence}%"></div></div>
+          <div class="explain" style="margin-top:12px"><div class="explain-head">Advisor reasoning ${aiTag(true)}</div>${r.reasoning}</div>
+          <div class="disclaimer">⚠ Educational only — not financial advice.</div>`;
+      } catch (e) {
+        $("recBody").innerHTML = `<div class="placeholder err">Advisor failed.</div>`;
+      }
+    }
+
+    // refresh() never triggers AI — only free data (chart, metrics, headlines).
+    // AI runs solely via the per-grid SSAI buttons below.
+    async function refresh() {
+      const ticker = $("ticker").value.trim().toUpperCase();
+      if (!ticker) return;
+      clearStaleAI();  // drop cached AI from a previous ticker
+      $("status").textContent = "loading…";
+      try {
+        await loadCandles(ticker);
+        await loadPattern(ticker);
+        loadFundamentals(ticker);
+        loadSentiment(ticker);
+        const t = new Date().toLocaleTimeString();
+        $("status").textContent = `updated ${t}`;
+      } catch (e) {
+        $("status").textContent = "error";
+        renderPatternError(e.message);
+      }
+    }
+
+    function startPolling() {
+      stopPolling();
+      if ($("liveToggle").checked) pollTimer = setInterval(refresh, POLL_MS);
+    }
+    function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
+
+    $("loadBtn").onclick = () => { acClose(); refresh(); startPolling(); };
+    $("liveToggle").onchange = startPolling;
+    $("tfSelect").addEventListener("change", (e) => {
+      tf = e.target.value;
+      refresh();
+    });
+
+    // All SSAI buttons route here — each fires AI only for its own grid.
+    const SSAI = {
+      explainBtn: loadExplanation,
+      fundBtn: runFundamentalsAI,
+      sentBtn: runSentimentAI,
+      recBtn: loadRecommendation,
+    };
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest && e.target.closest(".ssai-btn");
+      if (!btn || !SSAI[btn.id]) return;
+      btn.disabled = true;
+      SSAI[btn.id]($("ticker").value.trim().toUpperCase());
+    });
+
+    // ----------------------------------------------------------------------
+    // Ticker autocomplete — fetch the symbol list ONCE, then filter in memory.
+    // No per-keystroke network call, so suggestions are instant.
+    // ----------------------------------------------------------------------
+    let SYMBOLS = [];          // [{symbol, name}]
+    let acItems = [];          // current filtered matches
+    let acIndex = -1;          // highlighted index in the dropdown
+    const acEl = () => $("acList");
+
+    (async function loadSymbols() {
+      try {
+        const res = await fetch("/symbols");
+        SYMBOLS = (await res.json()).symbols || [];
+      } catch (e) { SYMBOLS = []; }
+    })();
+
+    function acFilter(q) {
+      q = q.trim().toUpperCase();
+      if (!q) return [];
+      const starts = [], contains = [];
+      for (const s of SYMBOLS) {
+        const sym = s.symbol.toUpperCase();
+        const name = (s.name || "").toUpperCase();
+        if (sym.startsWith(q)) starts.push(s);                       // best: symbol prefix
+        else if (sym.includes(q) || name.includes(q)) contains.push(s); // then any match
+        if (starts.length >= 30) break;
+      }
+      return starts.concat(contains).slice(0, 30);
+    }
+
+    function acHighlight(text, q) {
+      const i = text.toUpperCase().indexOf(q.toUpperCase());
+      if (i < 0) return text;
+      return text.slice(0, i) + "<mark>" + text.slice(i, i + q.length) + "</mark>" + text.slice(i + q.length);
+    }
+
+    function acRender(q) {
+      acItems = acFilter(q);
+      acIndex = -1;
+      if (!acItems.length) {
+        acEl().innerHTML = `<div class="ac-empty">No match — press Enter to use “${q.toUpperCase()}” anyway.</div>`;
+        acEl().classList.add("open");
+        return;
+      }
+      acEl().innerHTML = acItems.map((s, i) => `
+        <div class="ac-item" data-i="${i}" data-sym="${s.symbol}">
+          <span class="ac-sym">${acHighlight(s.symbol, q)}</span>
+          <span class="ac-name">${(s.name || "").replace(/</g, "&lt;")}</span>
+        </div>`).join("");
+      acEl().classList.add("open");
+    }
+
+    function acClose() { acEl().classList.remove("open"); acIndex = -1; }
+
+    function acSelect(sym) {
+      $("ticker").value = sym;
+      acClose();
+      refresh();
+      startPolling();
+    }
+
+    function acMove(delta) {
+      if (!acItems.length) return;
+      acIndex = (acIndex + delta + acItems.length) % acItems.length;
+      [...acEl().children].forEach((el, i) => el.classList.toggle("active", i === acIndex));
+      const active = acEl().children[acIndex];
+      if (active) active.scrollIntoView({ block: "nearest" });
+    }
+
+    $("ticker").addEventListener("input", (e) => acRender(e.target.value));
+    $("ticker").addEventListener("focus", (e) => { if (e.target.value.trim()) acRender(e.target.value); });
+    $("ticker").addEventListener("keydown", (e) => {
+      const open = acEl().classList.contains("open");
+      if (e.key === "ArrowDown") { e.preventDefault(); if (open) acMove(1); else acRender($("ticker").value); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); acMove(-1); }
+      else if (e.key === "Enter") {
+        e.preventDefault();
+        if (open && acIndex >= 0) acSelect(acItems[acIndex].symbol);
+        else { acClose(); refresh(); startPolling(); }
+      } else if (e.key === "Escape") { acClose(); }
+    });
+    acEl().addEventListener("mousedown", (e) => {
+      const item = e.target.closest(".ac-item");
+      if (item) { e.preventDefault(); acSelect(item.dataset.sym); }
+    });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".ac-wrap")) acClose();
+    });
+
+    // Inject the "i" tooltips into the momentum panel headers once.
+    $("rsiHead").innerHTML = `RSI (14)${info("rsi")}`;
+    $("macdHead").innerHTML = `MACD (12,26,9)${info("macd")}`;
+
+    // initial load — free data only; no AI until an SSAI button is clicked.
+    refresh();
+    startPolling();
+
+    // ======================================================================
+    // TAB NAVIGATION
+    // ======================================================================
+    function switchView(view) {
+      const isDash = view === "dashboard";
+      $("dashboardView").style.display = isDash ? "grid" : "none";
+      $("playgroundView").style.display = isDash ? "none" : "block";
+      $("dashControls").style.display = isDash ? "flex" : "none";
+      document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === view));
+      if (!isDash) Playground.onShow();
+    }
+    document.querySelector(".tabs").addEventListener("click", (e) => {
+      const t = e.target.closest(".tab");
+      if (t) switchView(t.dataset.view);
+    });
+
+    // ======================================================================
+    // PLAYGROUND — dummy trading, all state in localStorage
+    // ======================================================================
+    const Playground = (() => {
+      const KEY = "stocksense_playground_v1";
+      const LOT_SIZE = 50;             // simplified uniform F&O lot size
+      const FUT_MARGIN = 0.20;         // 20% margin for futures (5x leverage)
+      const fmt = (n) => "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+      const pnlCls = (v) => v >= 0 ? "pg-pnl-pos" : "pg-pnl-neg";
+      const sign = (v) => (v >= 0 ? "+" : "") + fmt(v);
+
+      let state = load();
+      let side = "BUY";
+      let priceCache = {};   // symbol -> last price
+      let pgTimer = null;
+
+      function load() {
+        try {
+          const s = JSON.parse(localStorage.getItem(KEY));
+          if (s && typeof s.cash === "number") return s;
+        } catch (e) {}
+        return { cash: 100000, positions: [], orders: [], history: [], nextId: 1 };
+      }
+      function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+      // ---- price feed (reuses /candles last close) ----
+      async function fetchPrice(symbol) {
+        try {
+          const res = await fetch(`/candles?ticker=${encodeURIComponent(symbol)}&tf=1D`);
+          if (!res.ok) return null;
+          const d = await res.json();
+          const last = d.candles[d.candles.length - 1];
+          if (last) { priceCache[symbol] = last.close; return last.close; }
+        } catch (e) {}
+        return null;
+      }
+      function px(symbol) { return priceCache[symbol] ?? null; }
+
+      // simplified option premium: intrinsic + time value proxy
+      function optionPremium(spot, strike, type) {
+        const intrinsic = type === "CE" ? Math.max(0, spot - strike) : Math.max(0, strike - spot);
+        const timeValue = spot * 0.03;   // flat ~3% of spot as extrinsic value
+        return Math.max(1, intrinsic + timeValue);
+      }
+      function strikesAround(spot) {
+        const step = spot > 2000 ? 100 : spot > 500 ? 50 : spot > 100 ? 10 : 5;
+        const atm = Math.round(spot / step) * step;
+        const out = [];
+        for (let i = -5; i <= 5; i++) out.push(atm + i * step);
+        return out.filter((s) => s > 0);
+      }
+      function expiries() {
+        // 3 synthetic monthly expiries (last Thursday-ish), labels only
+        return ["This month", "Next month", "Far month"];
+      }
+
+      // ---- order entry ----
+      function curSymbol() { return $("pgSymbol").value.trim().toUpperCase(); }
+      function curSegment() { return $("pgSegment").value; }
+      function curOrderType() { return $("pgOrderType").value; }
+
+      function effectiveQty() {
+        if (curSegment() === "INTRADAY") return Math.max(1, parseInt($("pgQty").value) || 1);
+        return (Math.max(1, parseInt($("pgLots").value) || 1)) * LOT_SIZE;
+      }
+
+      // price used for an order: market->LTP, limit->limit, SL/SL-M->trigger reference
+      function entryPriceForCost() {
+        const seg = curSegment(), ot = curOrderType(), spot = px(curSymbol());
+        if (seg === "OPTIONS" && spot) {
+          return optionPremium(spot, parseFloat($("pgStrike").value), $("pgOptType").value);
+        }
+        if (ot === "LIMIT") return parseFloat($("pgLimit").value) || spot || 0;
+        if (ot === "SL" || ot === "SL-M") return parseFloat($("pgTrigger").value) || spot || 0;
+        return spot || 0;
+      }
+      function orderValue() {
+        const qty = effectiveQty(), price = entryPriceForCost();
+        let val = qty * price;
+        if (curSegment() === "FUTURES") val *= FUT_MARGIN;   // only margin blocked
+        return val;
+      }
+
+      // ---- placing ----
+      function place() {
+        const symbol = curSymbol();
+        const spot = px(symbol);
+        if (!spot) { msg("Price not loaded yet — try again in a moment.", false); return; }
+        const seg = curSegment(), ot = curOrderType(), qty = effectiveQty();
+        const value = orderValue();
+
+        if (side === "BUY" && value > state.cash) {
+          msg(`Not enough cash. Need ${fmt(value)}, have ${fmt(state.cash)}.`, false); return;
+        }
+        const order = {
+          id: state.nextId++, symbol, side, segment: seg, orderType: ot, qty,
+          limit: parseFloat($("pgLimit").value) || null,
+          trigger: parseFloat($("pgTrigger").value) || null,
+          optType: seg === "OPTIONS" ? $("pgOptType").value : null,
+          strike: seg === "OPTIONS" ? parseFloat($("pgStrike").value) : null,
+          expiry: seg !== "INTRADAY" ? $("pgExpiry").value : null,
+          status: "PENDING", placedAt: new Date().toLocaleTimeString(),
+        };
+        // Market orders fill immediately; others wait for the trigger.
+        if (ot === "MARKET") fill(order, spot);
+        else { state.orders.push(order); msg(`${ot} order placed — waiting for trigger.`, true); }
+        save(); renderAll();
+      }
+
+      function instrumentLabel(o) {
+        if (o.segment === "OPTIONS") return `${o.symbol} ${o.strike} ${o.optType}`;
+        if (o.segment === "FUTURES") return `${o.symbol} FUT`;
+        return o.symbol;
+      }
+      function tradePrice(o, spot) {
+        if (o.segment === "OPTIONS") return optionPremium(spot, o.strike, o.optType);
+        return spot;
+      }
+
+      function fill(o, spot) {
+        const price = tradePrice(o, spot);
+        const cost = o.qty * price * (o.segment === "FUTURES" ? FUT_MARGIN : 1);
+        if (o.side === "BUY") state.cash -= cost;
+        else state.cash += cost;
+        // merge into positions (net by instrument+segment)
+        const key = instrumentLabel(o) + "|" + o.segment;
+        let pos = state.positions.find((p) => p.key === key);
+        const dir = o.side === "BUY" ? 1 : -1;
+        if (!pos) {
+          pos = { key, label: instrumentLabel(o), symbol: o.symbol, segment: o.segment,
+                  qty: 0, avg: 0, optType: o.optType, strike: o.strike };
+          state.positions.push(pos);
+        }
+        const newQty = pos.qty + dir * o.qty;
+        if (pos.qty === 0 || Math.sign(pos.qty) === Math.sign(newQty) || newQty === 0) {
+          // adding or closing
+          if (Math.sign(dir) === Math.sign(pos.qty) || pos.qty === 0)
+            pos.avg = (pos.avg * Math.abs(pos.qty) + price * o.qty) / (Math.abs(pos.qty) + o.qty);
+        } else { pos.avg = price; }
+        pos.qty = newQty;
+        if (pos.qty === 0) state.positions = state.positions.filter((p) => p.key !== key);
+
+        o.status = "EXECUTED"; o.fillPrice = price; o.filledAt = new Date().toLocaleTimeString();
+        state.history.unshift({ ...o });
+        state.orders = state.orders.filter((x) => x.id !== o.id);
+        msg(`${o.side} ${o.qty} ${instrumentLabel(o)} @ ${fmt(price)} ✓`, true);
+      }
+
+      // check pending orders against latest prices
+      function processPending() {
+        for (const o of [...state.orders]) {
+          const spot = px(o.symbol);
+          if (!spot) continue;
+          let trig = false;
+          if (o.orderType === "LIMIT") {
+            trig = o.side === "BUY" ? spot <= o.limit : spot >= o.limit;
+          } else if (o.orderType === "SL" || o.orderType === "SL-M") {
+            // stop triggers when price crosses trigger in the loss direction
+            trig = o.side === "BUY" ? spot >= o.trigger : spot <= o.trigger;
+            if (trig && o.orderType === "SL") {
+              // SL becomes a limit; only fill if limit also satisfied
+              trig = o.side === "BUY" ? spot <= o.limit : spot >= o.limit;
+            }
+          }
+          if (trig) fill(o, spot);
+        }
+      }
+
+      function cancelOrder(id) {
+        const o = state.orders.find((x) => x.id === id);
+        if (o) { o.status = "CANCELLED"; state.history.unshift({ ...o }); }
+        state.orders = state.orders.filter((x) => x.id !== id);
+        save(); renderAll();
+      }
+      function squareOff(key) {
+        const p = state.positions.find((x) => x.key === key);
+        if (!p) return;
+        const spot = px(p.symbol);
+        if (!spot) { msg("Price not loaded — cannot square off yet.", false); return; }
+        const price = p.segment === "OPTIONS" ? optionPremium(spot, p.strike, p.optType) : spot;
+        const pnl = (price - p.avg) * p.qty;     // qty sign carries direction
+        const margin = Math.abs(p.qty) * p.avg * (p.segment === "FUTURES" ? FUT_MARGIN : 1);
+        state.cash += margin + pnl;              // release margin + realised P&L
+        state.history.unshift({
+          id: state.nextId++, symbol: p.symbol, side: p.qty > 0 ? "SELL" : "BUY",
+          segment: p.segment, orderType: "SQUARE-OFF", qty: Math.abs(p.qty),
+          status: "EXECUTED", fillPrice: price, filledAt: new Date().toLocaleTimeString(),
+          optType: p.optType, strike: p.strike,
+        });
+        state.positions = state.positions.filter((x) => x.key !== key);
+        save(); renderAll();
+        msg(`Squared off ${p.label} — realised P&L ${sign(pnl)}`, pnl >= 0);
+      }
+
+      // ---- rendering ----
+      function positionPnl(p) {
+        const spot = px(p.symbol);
+        if (spot == null) return null;
+        const price = p.segment === "OPTIONS" ? optionPremium(spot, p.strike, p.optType) : spot;
+        return (price - p.avg) * p.qty;
+      }
+      function renderWallet() {
+        let invested = 0, openPnl = 0;
+        for (const p of state.positions) {
+          invested += Math.abs(p.qty) * p.avg * (p.segment === "FUTURES" ? FUT_MARGIN : 1);
+          const pl = positionPnl(p); if (pl != null) openPnl += pl;
+        }
+        $("pgCash").textContent = fmt(state.cash);
+        $("pgInvested").textContent = fmt(invested);
+        const op = $("pgOpenPnl"); op.textContent = sign(openPnl);
+        op.className = "pg-wval " + pnlCls(openPnl);
+        $("pgEquity").textContent = fmt(state.cash + invested + openPnl);
+      }
+      function renderPositions() {
+        const el = $("pgPanelPositions");
+        $("pgPosCount").textContent = state.positions.length;
+        if (!state.positions.length) { el.innerHTML = `<div class="pg-empty">No open positions. Place an order to start.</div>`; return; }
+        const rows = state.positions.map((p) => {
+          const spot = px(p.symbol);
+          const price = spot == null ? null : (p.segment === "OPTIONS" ? optionPremium(spot, p.strike, p.optType) : spot);
+          const pl = positionPnl(p);
+          const dirTag = p.qty > 0 ? "buy" : "sell";
+          return `<tr>
+            <td class="pg-sym-cell">${p.label}<span class="pg-tag ${dirTag}">${p.qty > 0 ? "LONG" : "SHORT"}</span></td>
+            <td>${Math.abs(p.qty)}</td>
+            <td>${fmt(p.avg)}</td>
+            <td>${price == null ? "—" : fmt(price)}</td>
+            <td class="${pl == null ? "" : pnlCls(pl)}">${pl == null ? "—" : sign(pl)}</td>
+            <td><button class="pg-sqoff" data-key="${p.key}">Square off</button></td>
+          </tr>`;
+        }).join("");
+        el.innerHTML = `<table class="pg-table">
+          <thead><tr><th>Instrument</th><th>Qty</th><th>Avg</th><th>LTP</th><th>P&L</th><th></th></tr></thead>
+          <tbody>${rows}</tbody></table>`;
+      }
+      function renderOrders() {
+        const el = $("pgPanelOrders");
+        $("pgOrdCount").textContent = state.orders.length;
+        if (!state.orders.length) { el.innerHTML = `<div class="pg-empty">No pending orders.</div>`; return; }
+        const rows = state.orders.map((o) => `<tr>
+          <td class="pg-sym-cell">${instrumentLabel(o)}<span class="pg-tag ${o.side.toLowerCase()}">${o.side}</span></td>
+          <td>${o.orderType}</td><td>${o.qty}</td>
+          <td>${o.limit ? "L " + fmt(o.limit) : ""}${o.trigger ? " T " + fmt(o.trigger) : ""}</td>
+          <td><span class="pg-status-pill pg-status-PENDING">PENDING</span></td>
+          <td><button class="pg-cancel" data-id="${o.id}">Cancel</button></td>
+        </tr>`).join("");
+        el.innerHTML = `<table class="pg-table">
+          <thead><tr><th>Instrument</th><th>Type</th><th>Qty</th><th>Price</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows}</tbody></table>`;
+      }
+      function renderHistory() {
+        const el = $("pgPanelHistory");
+        if (!state.history.length) { el.innerHTML = `<div class="pg-empty">No trades yet.</div>`; return; }
+        const rows = state.history.slice(0, 50).map((o) => `<tr>
+          <td>${o.filledAt || o.placedAt || ""}</td>
+          <td class="pg-sym-cell">${instrumentLabel(o)}<span class="pg-tag ${(o.side||'').toLowerCase()}">${o.side}</span></td>
+          <td>${o.orderType}</td><td>${o.qty}</td>
+          <td>${o.fillPrice != null ? fmt(o.fillPrice) : "—"}</td>
+          <td><span class="pg-status-pill pg-status-${o.status}">${o.status}</span></td>
+        </tr>`).join("");
+        el.innerHTML = `<table class="pg-table">
+          <thead><tr><th>Time</th><th>Instrument</th><th>Type</th><th>Qty</th><th>Price</th><th>Status</th></tr></thead>
+          <tbody>${rows}</tbody></table>`;
+      }
+      function renderAll() { renderWallet(); renderPositions(); renderOrders(); renderHistory(); }
+      function msg(text, ok) { const m = $("pgMsg"); m.textContent = text; m.className = "pg-msg " + (ok ? "ok" : "bad"); }
+
+      // ---- order form reactivity ----
+      function refreshFormFields() {
+        const seg = curSegment(), ot = curOrderType();
+        $("pgFnoFields").style.display = seg === "INTRADAY" ? "none" : "block";
+        $("pgQtyWrap").style.display = seg === "INTRADAY" ? "flex" : "none";
+        $("pgOptionRow").style.display = seg === "OPTIONS" ? "flex" : "none";
+        $("pgPremium").style.display = seg === "OPTIONS" ? "block" : "none";
+        $("pgLimitWrap").style.display = (ot === "LIMIT" || ot === "SL") ? "flex" : "none";
+        $("pgTriggerWrap").style.display = (ot === "SL" || ot === "SL-M") ? "flex" : "none";
+        const help = {
+          "MARKET": "Executes instantly at the best available current market price.",
+          "LIMIT": "Specify the max price to buy at / min price to sell at. Fills only at your price or better.",
+          "SL": "Triggers a LIMIT order once price hits your Trigger — caps losses while controlling fill price.",
+          "SL-M": "Triggers a MARKET order once price hits your Trigger — guarantees exit, price may vary.",
+        };
+        $("pgOtHelp").textContent = help[ot] || "";
+        if (seg === "OPTIONS") rebuildOptionChain();
+        updateCost();
+      }
+      function rebuildOptionChain() {
+        const spot = px(curSymbol());
+        if (!spot) return;
+        const strikes = strikesAround(spot);
+        const sel = $("pgStrike");
+        if (sel.options.length !== strikes.length) {
+          sel.innerHTML = strikes.map((s) => `<option value="${s}">${s}</option>`).join("");
+          sel.value = strikes[Math.floor(strikes.length / 2)];
+        }
+        if (!$("pgExpiry").options.length)
+          $("pgExpiry").innerHTML = expiries().map((e) => `<option>${e}</option>`).join("");
+        const prem = optionPremium(spot, parseFloat(sel.value), $("pgOptType").value);
+        $("pgPremium").textContent = `Est. premium: ${fmt(prem)} per share · lot ${LOT_SIZE} = ${fmt(prem * LOT_SIZE)}`;
+      }
+      function updateCost() {
+        const v = orderValue();
+        const label = curSegment() === "FUTURES" ? "Margin required" : "Order value";
+        $("pgCost").textContent = v ? `${label}: ${fmt(v)}` : `${label}: —`;
+      }
+
+      async function loadSymbolPrice() {
+        const sym = curSymbol();
+        $("pgLtp").textContent = "loading…"; $("pgLtpSym").textContent = "";
+        const p = await fetchPrice(sym);
+        $("pgLtp").textContent = p != null ? fmt(p) : "n/a";
+        $("pgLtpSym").textContent = p != null ? sym : "";
+        refreshFormFields();
+        renderAll();
+      }
+
+      // poll prices for held/active symbols + current symbol → drive P&L + triggers
+      async function tick() {
+        const syms = new Set([curSymbol(), ...state.positions.map((p) => p.symbol), ...state.orders.map((o) => o.symbol)]);
+        await Promise.all([...syms].filter(Boolean).map(fetchPrice));
+        processPending();
+        save(); renderAll();
+      }
+
+      function setSide(s) {
+        side = s;
+        $("pgPlace").textContent = `Place ${s} order`;
+        $("pgPlace").classList.toggle("sell", s === "SELL");
+        document.querySelector(".pg-buy").classList.toggle("active", s === "BUY");
+        document.querySelector(".pg-sell").classList.toggle("active", s === "SELL");
+      }
+
+      function wire() {
+        $("pgSegment").addEventListener("change", refreshFormFields);
+        $("pgOrderType").addEventListener("change", refreshFormFields);
+        $("pgOptType").addEventListener("change", rebuildOptionChain);
+        $("pgStrike").addEventListener("change", () => { rebuildOptionChain(); updateCost(); });
+        ["pgQty", "pgLots", "pgLimit", "pgTrigger"].forEach((id) => $(id).addEventListener("input", updateCost));
+        document.querySelector(".pg-sidebtns").addEventListener("click", (e) => {
+          const b = e.target.closest(".pg-side"); if (b) setSide(b.dataset.side);
+        });
+        $("pgPlace").addEventListener("click", place);
+        $("pgAddFunds").addEventListener("click", () => {
+          const amt = parseFloat(prompt("Add virtual funds (₹):", "100000"));
+          if (amt > 0) { state.cash += amt; save(); renderWallet(); msg(`Added ${fmt(amt)}.`, true); }
+        });
+        $("pgReset").addEventListener("click", () => {
+          if (confirm("Reset the playground? This wipes your wallet, positions and history.")) {
+            state = { cash: 100000, positions: [], orders: [], history: [], nextId: 1 };
+            save(); renderAll(); msg("Playground reset to ₹1,00,000.", true);
+          }
+        });
+        document.querySelector(".pg-tabs").addEventListener("click", (e) => {
+          const t = e.target.closest(".pg-tab"); if (!t) return;
+          document.querySelectorAll(".pg-tab").forEach((x) => x.classList.toggle("active", x === t));
+          ["positions", "orders", "history"].forEach((name) => {
+            $("pgPanel" + name[0].toUpperCase() + name.slice(1)).style.display = name === t.dataset.tab ? "block" : "none";
+          });
+        });
+        $("pgPanelPositions").addEventListener("click", (e) => {
+          const b = e.target.closest(".pg-sqoff"); if (b) squareOff(b.dataset.key);
+        });
+        $("pgPanelOrders").addEventListener("click", (e) => {
+          const b = e.target.closest(".pg-cancel"); if (b) cancelOrder(parseInt(b.dataset.id));
+        });
+        attachAutocomplete($("pgSymbol"), $("pgAcList"), () => loadSymbolPrice());
+        $("pgSymbol").addEventListener("change", loadSymbolPrice);
+      }
+
+      let started = false;
+      function onShow() {
+        if (!started) { wire(); started = true; }
+        setSide("BUY");
+        loadSymbolPrice();
+        renderAll();
+        if (pgTimer) clearInterval(pgTimer);
+        pgTimer = setInterval(tick, 30000);
+      }
+      return { onShow };
+    })();
+
+    // Generic autocomplete attachable to any input + list (reuses SYMBOLS).
+    function attachAutocomplete(input, listEl, onSelect) {
+      let items = [], idx = -1;
+      const render = (q) => {
+        q = q.trim().toUpperCase();
+        if (!q) { listEl.classList.remove("open"); return; }
+        const starts = [], contains = [];
+        for (const s of SYMBOLS) {
+          const sym = s.symbol.toUpperCase();
+          if (sym.startsWith(q)) starts.push(s);
+          else if (sym.includes(q) || (s.name || "").toUpperCase().includes(q)) contains.push(s);
+          if (starts.length >= 30) break;
+        }
+        items = starts.concat(contains).slice(0, 30); idx = -1;
+        listEl.innerHTML = items.length
+          ? items.map((s, i) => `<div class="ac-item" data-i="${i}" data-sym="${s.symbol}">
+              <span class="ac-sym">${s.symbol}</span><span class="ac-name">${(s.name || "").replace(/</g, "&lt;")}</span></div>`).join("")
+          : `<div class="ac-empty">No match — press Enter to use it anyway.</div>`;
+        listEl.classList.add("open");
+      };
+      const pick = (sym) => { input.value = sym; listEl.classList.remove("open"); onSelect(); };
+      input.addEventListener("input", (e) => render(e.target.value));
+      input.addEventListener("focus", (e) => { if (e.target.value.trim()) render(e.target.value); });
+      input.addEventListener("keydown", (e) => {
+        const open = listEl.classList.contains("open");
+        if (e.key === "ArrowDown" && open) { e.preventDefault(); idx = (idx + 1) % items.length; hl(); }
+        else if (e.key === "ArrowUp" && open) { e.preventDefault(); idx = (idx - 1 + items.length) % items.length; hl(); }
+        else if (e.key === "Enter") { e.preventDefault(); if (open && idx >= 0) pick(items[idx].symbol); else { listEl.classList.remove("open"); onSelect(); } }
+        else if (e.key === "Escape") listEl.classList.remove("open");
+      });
+      const hl = () => [...listEl.children].forEach((el, i) => el.classList.toggle("active", i === idx));
+      listEl.addEventListener("mousedown", (e) => { const it = e.target.closest(".ac-item"); if (it) { e.preventDefault(); pick(it.dataset.sym); } });
+      document.addEventListener("click", (e) => { if (!listEl.parentElement.contains(e.target)) listEl.classList.remove("open"); });
+    }
+  </script>
+</body>
+</html>

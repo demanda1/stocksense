@@ -12,4 +12,4 @@ def sentiment_node(state):
     return {"sentiment": analyze_sentiment(state["ticker"])}
 
 def advisor_node(state):
-    return {"sentiment": advise(state)}
+    return {"recommendation": advise(state).model_dump()}

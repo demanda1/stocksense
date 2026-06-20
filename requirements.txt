@@ -1,0 +1,33 @@
+# Web framework
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# LangChain / LangGraph stack
+langgraph>=0.2
+langchain-core>=0.3
+langchain-groq>=0.2
+langchain-chroma>=0.1
+langchain-huggingface>=0.1
+langchain-text-splitters>=0.3
+
+# Vector store + embeddings
+chromadb>=0.5
+sentence-transformers>=3.0
+
+# Market data + indicators
+yfinance>=0.2.40
+nselib>=2.0
+pandas>=2.0
+numpy>=1.26
+pandas_ta>=0.3.14b0
+
+# News ingestion
+requests>=2.31
+feedparser>=6.0
+
+# Observability
+langfuse>=2.0
+
+# Config
+python-dotenv>=1.0
+pydantic>=2.6
