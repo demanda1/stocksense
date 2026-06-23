@@ -19,7 +19,6 @@ yfinance>=0.2.40
 nselib>=2.0
 pandas>=2.0
 numpy>=1.26
-pandas_ta>=0.3.14b0
 
 # News ingestion
 requests>=2.31

@@ -21,7 +21,9 @@ import json
 import os
 
 NSE_CSV_URL = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
+NIFTY200_CSV_URL = "https://nsearchives.nseindia.com/content/indices/ind_nifty200list.csv"
 OUT_PATH = os.path.join(os.path.dirname(__file__), "..", "app", "static", "symbols.json")
+NIFTY200_OUT = os.path.join(os.path.dirname(__file__), "..", "app", "data", "nifty200.json")
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
@@ -29,11 +31,21 @@ HEADERS = {
 }
 
 
-def _download_csv() -> str:
+def _download_csv(url: str = NSE_CSV_URL) -> str:
     import requests  # local import so the script is usable with --csv offline
-    r = requests.get(NSE_CSV_URL, headers=HEADERS, timeout=30)
+    r = requests.get(url, headers=HEADERS, timeout=30)
     r.raise_for_status()
     return r.text
+
+
+def _parse_nifty200(csv_text: str) -> list[dict]:
+    rows = []
+    for row in csv.DictReader(io.StringIO(csv_text)):
+        clean = {k.strip(): (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
+        if clean.get("Series") == "EQ" and clean.get("Symbol"):
+            rows.append({"symbol": clean["Symbol"], "name": clean.get("Company Name", "")})
+    rows.sort(key=lambda r: r["symbol"])
+    return rows
 
 
 def _parse(csv_text: str) -> list[dict]:
@@ -69,6 +81,18 @@ def main() -> None:
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rows, f, ensure_ascii=False, separators=(",", ":"))
     print(f"Wrote {len(rows)} symbols → {out}")
+
+    # Also refresh the Nifty 200 list used by the Top Movers panel.
+    if not args.csv:
+        try:
+            n200 = _parse_nifty200(_download_csv(NIFTY200_CSV_URL))
+            n200_out = os.path.abspath(NIFTY200_OUT)
+            os.makedirs(os.path.dirname(n200_out), exist_ok=True)
+            with open(n200_out, "w", encoding="utf-8") as f:
+                json.dump(n200, f, ensure_ascii=False, separators=(",", ":"))
+            print(f"Wrote {len(n200)} Nifty 200 symbols → {n200_out}")
+        except Exception as e:
+            print(f"Skipped Nifty 200 refresh: {e}")
 
 
 if __name__ == "__main__":

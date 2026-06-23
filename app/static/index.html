@@ -98,20 +98,34 @@
       grid-template-columns: 1fr 1fr 1fr;
       grid-template-areas:
         "chart  chart  pattern"
+        "verdict verdict verdict"
+        "struct struct alerts"
         "fund   sent   sent"
         "indic  indic  indic"
         "rec    rec    rec";
     }
-    @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; grid-template-areas: "chart" "pattern" "fund" "sent" "indic" "rec"; } }
+    @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; grid-template-areas: "chart" "pattern" "verdict" "struct" "alerts" "fund" "sent" "indic" "rec"; } }
 
     .box {
       background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
       padding: 14px; display: flex; flex-direction: column;
     }
     .box h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    #chartBox h2 { display: flex; align-items: center; gap: 8px; }
+    .chart-toggle {
+      margin-left: auto; font-size: 11px; text-transform: none; letter-spacing: 0;
+      background: var(--bg); color: var(--muted); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 10px; cursor: pointer; font-weight: 600;
+    }
+    .chart-toggle:hover { color: var(--text); border-color: var(--accent); }
+    .chart-toggle.active { background: rgba(88,166,255,0.15); color: var(--accent); border-color: var(--accent); }
     #chartBox { grid-area: chart; min-height: 420px; }
     #patternBox { grid-area: pattern; }
     #indicBox { grid-area: indic; }
+    #verdictBox { grid-area: verdict; }
+    #verdictBox h2 { display: flex; align-items: center; gap: 6px; }
+    #structBox { grid-area: struct; }
+    #alertsBox { grid-area: alerts; }
     #fundBox { grid-area: fund; }
     #sentBox { grid-area: sent; }
     #recBox { grid-area: rec; }
@@ -151,6 +165,83 @@
     .metric-legend .dot.good { background: var(--green); }
     .metric-legend .dot.mid  { background: var(--amber); }
     .metric-legend .dot.bad  { background: var(--red); }
+
+    /* ===== risk & position sizing ===== */
+    .risk-box { margin-top: 14px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); border-left: 3px solid var(--amber); }
+    .risk-head { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .risk-inputs { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .risk-inputs label { flex: 1; min-width: 78px; font-size: 10px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+    .risk-inputs input { background: #0b0f15; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; width: 100%; }
+    .risk-inputs input:focus { outline: none; border-color: var(--accent); }
+    .risk-out .kv { font-size: 13px; }
+    .rr-good { color: var(--green); } .rr-mid { color: var(--amber); } .rr-bad { color: var(--red); }
+    .pnl-pos { color: var(--green); font-weight: 700; } .pnl-neg { color: var(--red); font-weight: 700; }
+    .risk-warn { font-size: 11.5px; color: var(--amber); margin-top: 8px; line-height: 1.4; }
+
+    /* ===== backtest ===== */
+    .backtest-slot { margin-top: 14px; }
+    .bt-loading, .bt-note { font-size: 12px; color: var(--muted); font-style: italic; padding: 8px 0; }
+    .backtest-slot .bt-head, .bt-head { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .bt-stats { display: flex; gap: 10px; }
+    .bt-stat { flex: 1; text-align: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 6px; }
+    .bt-stat span { display: block; font-size: 20px; font-weight: 800; color: var(--text); }
+    .bt-stat label { font-size: 10px; color: var(--muted); line-height: 1.3; }
+    .bt-warn { font-size: 11.5px; color: var(--amber); margin-top: 8px; }
+    .bt-foot { font-size: 10px; color: var(--muted); margin-top: 6px; font-style: italic; }
+
+    /* ===== market structure ===== */
+    .struct-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .struct-cell { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .struct-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+    .struct-val { font-size: 16px; font-weight: 700; color: var(--text); }
+    .struct-sub { font-size: 11px; color: var(--muted); font-weight: 400; }
+    .struct-note { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+    .sector-slot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .sector-head { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .sector-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+    .sector-row span:first-child { color: var(--muted); }
+    .sector-verdict { font-size: 12.5px; margin-top: 8px; line-height: 1.5; font-weight: 600; }
+    .sector-note { font-size: 12px; color: var(--muted); font-style: italic; }
+
+    /* ===== alerts ===== */
+    .alert-form { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .alert-form .tf-select { font-size: 12px; padding: 7px 26px 7px 9px; }
+    .alert-form input { flex: 1; min-width: 70px; background: #0b0f15; color: var(--text); border: 1.5px solid var(--border); border-radius: 8px; padding: 7px 9px; font-size: 13px; }
+    .alert-form input:focus { outline: none; border-color: var(--accent); }
+    .alert-add { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+    .alert-add:hover { filter: brightness(1.1); }
+    .alert-list { display: flex; flex-direction: column; gap: 6px; }
+    .alert-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 7px 9px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; }
+    .alert-item > span:first-child { flex: 1; }
+    .alert-item.alert-fired { border-color: var(--green); background: rgba(38,166,154,0.1); }
+    .alert-state { font-size: 11px; color: var(--muted); }
+    .alert-fired .alert-state { color: var(--green); font-weight: 700; }
+    .alert-del { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+    .alert-del:hover { color: var(--red); }
+    .alert-empty { font-size: 12px; color: var(--muted); font-style: italic; }
+
+    /* ===== overall verdict ===== */
+    .vd-top { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .vd-call { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; }
+    .vd-call.buy, .vd-call.strongbuy { color: var(--green); }
+    .vd-call.sell, .vd-call.strongsell { color: var(--red); }
+    .vd-call.neutral { color: var(--amber); }
+    .vd-agree { font-size: 12px; color: var(--muted); }
+    .vd-gauge { flex: 1; min-width: 200px; }
+    .vd-gauge-bar { position: relative; height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(239,83,80,0.5), rgba(139,148,158,0.4), rgba(38,166,154,0.5)); }
+    .vd-gauge-marker { position: absolute; top: -3px; width: 4px; height: 18px; border-radius: 2px; background: #fff; transform: translateX(-2px); box-shadow: 0 0 6px rgba(0,0,0,0.6); }
+    .vd-gauge-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 4px; }
+    .vd-signals { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .vd-sig { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 10px; font-size: 12.5px; }
+    .vd-sig-name { font-weight: 600; color: var(--text); }
+    .vd-sig-track { position: relative; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+    .vd-sig-fill { position: absolute; top: 0; height: 100%; }
+    .vd-sig-fill.pos { background: var(--green); left: 50%; }
+    .vd-sig-fill.neg { background: var(--red); right: 50%; }
+    .vd-sig-mid { position: absolute; left: 50%; top: -2px; width: 1px; height: 10px; background: var(--border); }
+    .vd-sig-note { color: var(--muted); font-size: 11px; max-width: 100%; }
+    .vd-sig-wt { font-size: 10px; color: var(--muted); }
+    .vd-foot { font-size: 10px; color: var(--muted); margin-top: 12px; font-style: italic; }
     .conf-bar { height: 8px; border-radius: 4px; background: var(--bg); overflow: hidden; margin-top: 4px; }
     .conf-fill { height: 100%; background: var(--accent); }
     .rationale { font-size: 13px; color: var(--muted); line-height: 1.5; margin-top: 10px; }
@@ -250,6 +341,26 @@
     .tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
     .tab.active { color: #fff; background: var(--accent); }
 
+    /* ===== top movers panel ===== */
+    .movers-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px 14px 0; }
+    @media (max-width: 700px) { .movers-wrap { grid-template-columns: 1fr; } }
+    .movers-col { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+    .movers-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .movers-buy { color: var(--green); }
+    .movers-sell { color: var(--red); }
+    .mover { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 7px; cursor: pointer; transition: background 0.12s; }
+    .mover:hover { background: rgba(88,166,255,0.1); }
+    .mover-rank { font-size: 11px; color: var(--muted); width: 14px; flex: none; }
+    .mover-sym { font-weight: 700; font-size: 13px; }
+    .mover-name { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mover-mid { flex: 1; min-width: 0; }
+    .mover-price { font-size: 12px; color: var(--muted); margin-right: 10px; }
+    .mover-chg { font-size: 13px; font-weight: 700; flex: none; min-width: 62px; text-align: right; }
+    .mover-chg.up { color: var(--green); }
+    .mover-chg.down { color: var(--red); }
+    .movers-loading, .movers-empty { font-size: 12px; color: var(--muted); font-style: italic; padding: 10px 8px; }
+    .movers-asof { font-size: 10px; color: var(--muted); margin-top: 8px; text-align: right; }
+
     /* ===== playground ===== */
     .pg-walletbar {
       display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
@@ -332,6 +443,30 @@
     .pg-status-EXECUTED { background: rgba(38,166,154,0.18); color: var(--green); }
     .pg-status-CANCELLED { background: rgba(139,148,158,0.18); color: var(--muted); }
     .pg-empty { text-align: center; color: var(--muted); font-style: italic; font-size: 13px; padding: 24px; }
+
+    /* ===== inference grading ===== */
+    .pos-pred { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .pos-pred b { font-weight: 700; }
+    .pos-pred-none { font-style: italic; opacity: 0.7; }
+    .v-cell { position: relative; cursor: help; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; }
+    .v-cell .tip {
+      visibility: hidden; opacity: 0; transition: opacity 0.12s; position: absolute; bottom: 140%; right: 0;
+      width: 230px; background: #1c2530; color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 10px; font-size: 11.5px; font-weight: 400; line-height: 1.45; z-index: 30; text-align: left;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    }
+    .v-cell:hover .tip { visibility: visible; opacity: 1; }
+    .v-correct { color: var(--green); }
+    .v-wrong { color: var(--red); }
+    .v-ignored { color: var(--amber); }
+    .v-lucky { color: #bc8cff; }
+    .v-none { color: var(--muted); font-weight: 400; }
+
+    .scorecard { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+    .sc-head { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .sc-main { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+    .sc-main b { color: var(--accent); }
+    .sc-break { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11.5px; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -379,9 +514,29 @@
     </div>
   </header>
 
+  <!-- Top movers panel (Dashboard tab only) -->
+  <div id="moversPanel" class="movers-wrap">
+    <div class="movers-col">
+      <div class="movers-head movers-buy">
+        ▲ Top 5 being bought
+        <i class="info">i<span class="tip">The 5 Nifty-200 stocks with the biggest price GAIN today — a proxy for net buying pressure. Based on % price change, not literal broker order data. Click one to load it.</span></i>
+      </div>
+      <div id="moversBuy"><div class="movers-loading">Loading…</div></div>
+    </div>
+    <div class="movers-col">
+      <div class="movers-head movers-sell">
+        ▼ Top 5 being sold
+        <i class="info">i<span class="tip">The 5 Nifty-200 stocks with the biggest price DROP today — a proxy for net selling pressure. Based on % price change, not literal broker order data. Click one to load it.</span></i>
+      </div>
+      <div id="moversSell"><div class="movers-loading">Loading…</div></div>
+    </div>
+  </div>
+
   <div class="grid" id="dashboardView">
     <div class="box" id="chartBox">
-      <h2>Technical Analysis · <span id="symLabel">—</span></h2>
+      <h2>Technical Analysis · <span id="symLabel">—</span>
+        <button id="srToggle" class="chart-toggle active" title="Show / hide support & resistance levels">S/R levels</button>
+      </h2>
       <div id="mainChart" class="chart"></div>
       <div class="legend">
         <span class="lg"><i class="lg-candle"></i>Price<i class="info">i<span class="tip">Each candle shows the open, high, low and close for one period. Green = closed higher than it opened, red = closed lower.</span></i></span>
@@ -389,12 +544,50 @@
         <span class="lg"><i class="lg-line" style="background:#d29922"></i>SMA 50<i class="info">i<span class="tip">Simple Moving Average over the last 50 candles — the medium-term trend. Slower than SMA 20; when SMA 20 crosses above SMA 50 it's often read as bullish.</span></i></span>
         <span class="lg"><i class="lg-line" style="background:rgba(139,148,158,0.8)"></i>Bollinger bands<i class="info">i<span class="tip">Two bands plotted 2 standard deviations above and below the 20-period average. They widen when the stock is volatile and narrow when calm; price near the upper band can mean overbought, near the lower band oversold.</span></i></span>
         <span class="lg"><i class="lg-line lg-dash" style="--dash:#ff79c6"></i>Projected target<i class="info">i<span class="tip">A dashed line from the current price to the pattern's measured-move target. An educational projection, not a guarantee.</span></i></span>
+        <span class="lg"><i class="lg-line lg-dash" style="--dash:#26a69a"></i>Support / Resistance<i class="info">i<span class="tip">Dashed green = support (price floors), dashed red = resistance (ceilings). The S·n / R·n label shows how many times price touched that level — more touches = stronger.</span></i></span>
+        <span class="lg"><i class="lg-line" style="background:rgba(139,148,158,0.6)"></i>Volume<i class="info">i<span class="tip">Bars at the bottom show shares traded per candle, coloured green (up day) / red (down day). Tall bars = high participation.</span></i></span>
       </div>
     </div>
 
     <div class="box" id="patternBox">
       <h2>Pattern + Prediction</h2>
       <div id="patternBody"><div class="placeholder">Load a ticker to detect a pattern.</div></div>
+    </div>
+
+    <div class="box" id="verdictBox">
+      <h2>Overall Verdict
+        <i class="info">i<span class="tip">One weighted call combining the chart pattern, RSI, MACD, trend and volume. The weighting depends on your risk profile. Pure math — not financial advice.</span></i>
+        <select id="verdictRisk" class="tf-select" style="margin-left:auto; font-size:12px; padding:5px 28px 5px 10px">
+          <option value="conservative">Conservative</option>
+          <option value="moderate" selected>Moderate</option>
+          <option value="aggressive">Aggressive</option>
+        </select>
+      </h2>
+      <div id="verdictBody"><div class="placeholder">Load a ticker for the combined verdict.</div></div>
+    </div>
+
+    <div class="box" id="structBox">
+      <h2>Market Structure</h2>
+      <div id="structBody"><div class="placeholder">Load a ticker to see trend, volatility &amp; volume.</div></div>
+    </div>
+
+    <div class="box" id="alertsBox">
+      <h2>Alerts
+        <i class="info">i<span class="tip">Get notified when this stock's price crosses a level or RSI hits a threshold. Checked on every refresh while the tab is open. Uses browser notifications.</span></i>
+      </h2>
+      <div class="alert-form">
+        <select id="alertMetric" class="tf-select">
+          <option value="price">Price</option>
+          <option value="rsi">RSI</option>
+        </select>
+        <select id="alertOp" class="tf-select">
+          <option value="above">crosses above</option>
+          <option value="below">crosses below</option>
+        </select>
+        <input id="alertValue" type="number" step="0.01" placeholder="value" />
+        <button id="alertAdd" class="alert-add">Add</button>
+      </div>
+      <div id="alertList" class="alert-list"></div>
     </div>
 
     <div class="box" id="indicBox">
@@ -606,15 +799,43 @@
       grid: { vertLines: { color: "#21262d" }, horzLines: { color: "#21262d" } },
       timeScale: { timeVisible: true, borderColor: "#30363d" },
       rightPriceScale: { borderColor: "#30363d" },
+      // Left scale mirrors the right so S/R labels sit on the LEFT, away from
+      // the live price labels on the right — keeps the chart readable.
+      leftPriceScale: { visible: true, borderColor: "#30363d" },
       crosshair: { mode: 0 },
     };
     const main = LightweightCharts.createChart($("mainChart"), chartOpts);
     const candleSeries = main.addCandlestickSeries({ upColor: "#26a69a", downColor: "#ef5350", borderVisible: false, wickUpColor: "#26a69a", wickDownColor: "#ef5350" });
+    // Invisible series bound to the LEFT scale; S/R price-lines attach here so
+    // their axis labels render on the left. autoscaleInfoProvider mirrors the
+    // candle range so both scales line up.
+    const srSeries = main.addLineSeries({ priceScaleId: "left", lastValueVisible: false, priceLineVisible: false, color: "rgba(0,0,0,0)" });
     const sma20Series = main.addLineSeries({ color: "#58a6ff", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
     const sma50Series = main.addLineSeries({ color: "#d29922", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
     const bbUpper = main.addLineSeries({ color: "rgba(139,148,158,0.5)", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
     const bbLower = main.addLineSeries({ color: "rgba(139,148,158,0.5)", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
     const projSeries = main.addLineSeries({ color: "#ff79c6", lineWidth: 2, lineStyle: 2, priceLineVisible: false, lastValueVisible: true, title: "target" });
+    // Volume histogram on its own overlay scale (bottom ~18% of the chart).
+    const volSeries = main.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "vol", lastValueVisible: false, priceLineVisible: false });
+    main.priceScale("vol").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+    let srLines = [];   // active support/resistance price-line handles
+    let srLevels = [];  // last-loaded level data, for toggling on/off
+    let showSR = true;  // toggle state for S/R visibility
+
+    // Draw (or clear) S/R lines on the left-scale series based on showSR.
+    function drawSR() {
+      srLines.forEach((l) => srSeries.removePriceLine(l));
+      srLines = [];
+      if (!showSR) return;
+      srLines = srLevels.map((lv) =>
+        srSeries.createPriceLine({
+          price: lv.price,
+          color: lv.kind === "support" ? "rgba(38,166,154,0.6)" : "rgba(239,83,80,0.6)",
+          lineWidth: 1, lineStyle: 3,
+          axisLabelVisible: true,
+          title: `${lv.kind === "support" ? "S" : "R"}·${lv.touches}`,
+        }));
+    }
 
     const rsi = LightweightCharts.createChart($("rsiChart"), { ...chartOpts });
     const rsiLine = rsi.addLineSeries({ color: "#bc8cff", lineWidth: 1 });
@@ -644,6 +865,148 @@
       rsiLine.setData(d.rsi);
       macdLine.setData(d.macd);
       macdSignal.setData(d.macd_signal);
+      volSeries.setData(d.volumes || []);
+      // Mirror close data onto the (invisible) left-scale series so its range
+      // matches the candles and S/R labels line up correctly on the left.
+      srSeries.setData(d.candles.map((c) => ({ time: c.time, value: c.close })));
+
+      // Check price/RSI alerts against the latest values.
+      const lastPrice = d.candles.length ? d.candles[d.candles.length - 1].close : null;
+      const lastRsi = d.rsi && d.rsi.length ? d.rsi[d.rsi.length - 1].value : null;
+      const sym = (d.symbol || "").replace(".NS", "").replace(".BO", "");
+      checkAlerts(sym, lastPrice, lastRsi);
+      renderAlerts();
+
+      // Remember levels and (re)draw them respecting the toggle.
+      srLevels = d.levels || [];
+      drawSR();
+
+      renderStructure(d.analysis || null);
+      loadSectorContext($("ticker").value.trim().toUpperCase());
+    }
+
+    // Market structure box: trend, volatility (ATR), volume.
+    function renderStructure(a) {
+      const el = $("structBody");
+      if (!el) return;
+      if (!a) { el.innerHTML = `<div class="placeholder">No structure data.</div>`; return; }
+      const structCls = a.trend_structure === "uptrend" ? "bullish"
+        : a.trend_structure === "downtrend" ? "bearish" : "neutral";
+      const strengthCls = (a.trend_strength || "").includes("strong") ? "rr-good"
+        : a.trend_strength === "weak" ? "rr-mid" : "rr-bad";
+      const volCls = a.volume_label === "high" ? "rr-good" : a.volume_label === "low" ? "rr-bad" : "rr-mid";
+      const er = a.expected_range;
+      el.innerHTML = `
+        <div class="struct-grid">
+          <div class="struct-cell">
+            <div class="struct-label">Trend structure${info("structure")}</div>
+            <div class="struct-val"><span class="signal-badge ${structCls}">${(a.trend_structure||"—").toUpperCase()}</span></div>
+          </div>
+          <div class="struct-cell">
+            <div class="struct-label">Trend strength${info("adx")}</div>
+            <div class="struct-val ${strengthCls}">${a.trend_strength || "—"}${a.adx != null ? ` <span class="struct-sub">ADX ${a.adx.toFixed(0)}</span>` : ""}</div>
+          </div>
+          <div class="struct-cell">
+            <div class="struct-label">Volatility${info("atr")}</div>
+            <div class="struct-val">${a.atr != null ? `₹${a.atr.toFixed(2)}` : "—"}${a.atr_pct != null ? ` <span class="struct-sub">${a.atr_pct}% / day</span>` : ""}</div>
+          </div>
+          <div class="struct-cell">
+            <div class="struct-label">Expected day range${info("range")}</div>
+            <div class="struct-val">${er ? `₹${er.low} – ₹${er.high}` : "—"}</div>
+          </div>
+          <div class="struct-cell">
+            <div class="struct-label">Volume${info("volume")}</div>
+            <div class="struct-val ${volCls}">${a.volume_label || "—"}${a.volume_ratio != null ? ` <span class="struct-sub">${a.volume_ratio}× avg</span>` : ""}</div>
+          </div>
+        </div>
+        <div class="struct-note">${structureNote(a)}</div>
+        <div id="sectorSlot" class="sector-slot"></div>`;
+    }
+
+    // Sector & index context — relative strength vs sector and Nifty 200.
+    async function loadSectorContext(ticker) {
+      const slot = $("sectorSlot");
+      if (!slot) return;
+      try {
+        const res = await fetch(`/sector-context?ticker=${encodeURIComponent(ticker)}`);
+        const d = await res.json();
+        if (!d.available) { slot.innerHTML = `<div class="sector-note">${d.reason || "No sector data (not in Nifty 200)."}</div>`; return; }
+        const sCls = d.strength === "leading" ? "rr-good" : d.strength === "lagging" ? "rr-bad" : "rr-mid";
+        const chg = (v) => v == null ? "—" : `${v >= 0 ? "+" : ""}${v}%`;
+        slot.innerHTML = `
+          <div class="sector-head">Sector & market context${info("sector")}</div>
+          <div class="sector-row">
+            <span>This stock</span><span class="${(d.stock_change||0) >= 0 ? "pnl-pos" : "pnl-neg"}">${chg(d.stock_change)}</span>
+          </div>
+          <div class="sector-row">
+            <span>${d.sector}</span><span class="${(d.sector_change||0) >= 0 ? "pnl-pos" : "pnl-neg"}">${chg(d.sector_change)}</span>
+          </div>
+          <div class="sector-row">
+            <span>Nifty 200 (market)</span><span class="${(d.market_change||0) >= 0 ? "pnl-pos" : "pnl-neg"}">${chg(d.market_change)}</span>
+          </div>
+          <div class="sector-verdict ${sCls}">${strengthNote(d)}</div>`;
+      } catch (e) { slot.innerHTML = ""; }
+    }
+    function strengthNote(d) {
+      const vs = (v) => v == null ? "" : `${v >= 0 ? "+" : ""}${v}%`;
+      if (d.strength === "leading")
+        return `▲ Leading — outperforming its sector (${vs(d.vs_sector)}) and the market (${vs(d.vs_market)}). Relative strength is a bullish sign.`;
+      if (d.strength === "lagging")
+        return `▼ Lagging — underperforming its sector (${vs(d.vs_sector)}) and the market (${vs(d.vs_market)}). Weak relative strength.`;
+      return `≈ Moving roughly in line with its sector and the market.`;
+    }
+
+    function structureNote(a) {
+      const bits = [];
+      if (a.trend_structure === "sideways" || (a.trend_strength || "").includes("no trend"))
+        bits.push("Choppy / rangebound — chart patterns are less reliable here; wait for a clear breakout.");
+      else if (a.trend_structure === "uptrend")
+        bits.push("Higher highs & higher lows — momentum favours the upside.");
+      else if (a.trend_structure === "downtrend")
+        bits.push("Lower highs & lower lows — momentum favours the downside.");
+      if (a.volume_label === "high") bits.push("Above-average volume is confirming the current move.");
+      else if (a.volume_label === "low") bits.push("Low volume — moves lack conviction, treat breakouts with caution.");
+      return bits.join(" ");
+    }
+
+    // Overall verdict box — weighted combination of all technical signals.
+    async function loadVerdict(ticker) {
+      const el = $("verdictBody");
+      if (!el) return;
+      const risk = $("verdictRisk").value;
+      try {
+        const res = await fetch(`/verdict?ticker=${encodeURIComponent(ticker)}&tf=${tf}&risk=${risk}`);
+        if (!res.ok) { el.innerHTML = `<div class="placeholder err">${(await res.json()).detail}</div>`; return; }
+        const v = await res.json();
+        const callCls = v.label.toLowerCase().replace(/[^a-z]/g, "");
+        const markerPct = v.bull_pct;
+        const sigRows = v.signals.map((s) => {
+          const pct = Math.round(Math.abs(s.score) * 50);  // half-bar width
+          const fill = s.score >= 0
+            ? `<div class="vd-sig-fill pos" style="width:${pct}%"></div>`
+            : `<div class="vd-sig-fill neg" style="width:${pct}%"></div>`;
+          return `<div class="vd-sig">
+            <span class="vd-sig-name">${s.label} <span class="vd-sig-wt">${Math.round(s.weight*100)}%</span></span>
+            <span class="vd-sig-track">${fill}<span class="vd-sig-mid"></span></span>
+            <span class="vd-sig-note">${s.note}</span>
+          </div>`;
+        }).join("");
+        el.innerHTML = `
+          <div class="vd-top">
+            <div>
+              <div class="vd-call ${callCls}">${v.label}</div>
+              <div class="vd-agree">${v.agreement}% of signals agree${info("agreement")}</div>
+            </div>
+            <div class="vd-gauge">
+              <div class="vd-gauge-bar"><div class="vd-gauge-marker" style="left:${markerPct}%"></div></div>
+              <div class="vd-gauge-scale"><span>Bearish</span><span>Neutral</span><span>Bullish</span></div>
+            </div>
+          </div>
+          <div class="vd-signals">${sigRows}</div>
+          <div class="vd-foot">⚠ ${v.disclaimer}</div>`;
+      } catch (e) {
+        el.innerHTML = `<div class="placeholder err">Could not compute verdict.</div>`;
+      }
     }
 
     async function loadPattern(ticker) {
@@ -675,12 +1038,32 @@
       bollinger: "Two bands plotted 2 standard deviations above and below the 20-period average. They widen when the stock is volatile and narrow when it's calm; price near the upper band can mean overbought, near the lower band oversold.",
       price: "Each candle shows the open, high, low and close for one period. Green = closed higher than it opened, red = closed lower.",
       projected: "A dashed line from the current price to the pattern's measured-move target. It's an educational projection, not a guarantee.",
+      risk: "Turns the pattern into a concrete plan: how many shares to buy for your capital and risk tolerance, and what you stand to lose or gain.",
+      riskpct: "How much of your capital you're willing to lose on this one trade if the stop is hit. Pros typically risk 1–2% per trade.",
+      shares: "Shares = (capital × risk %) ÷ (entry − stop). Sized so that if the stop hits, you only lose your chosen risk amount.",
+      rr: "Risk:Reward = potential gain ÷ potential loss. 2:1 means you aim to make twice what you risk. Below 1:1 is generally a poor trade.",
+      backtest: "How this exact pattern played out on this stock's own past data — how often price reached the measured target, and the average move afterwards.",
+      inference: "Tracks how often your trades agreed with the dashboard's pattern signal AND made money. 'Correct' = you followed the signal and profited. 'Wrong' = you followed it but lost (the read failed). 'Ignored' = signal was right but you traded against it. 'Lucky' = profited against the signal.",
+      structure: "The shape of recent swings. Uptrend = higher highs & higher lows. Downtrend = lower highs & lower lows. Sideways = no clear direction (patterns are less reliable here).",
+      adx: "Average Directional Index measures how STRONG the trend is, regardless of direction. Above 25 = a real trend worth trading; below ~18 = choppy/rangebound.",
+      atr: "Average True Range — the typical amount this stock moves in a day. Higher ATR = more volatile. Useful for setting realistic targets and stops.",
+      range: "A rough estimate of where today's price could travel: current price ± one ATR. Not a hard limit, just the usual daily swing.",
+      volume: "How many shares traded vs. the 20-day average. High volume confirms a move is backed by real participation; low volume means the move lacks conviction.",
+      srlevels: "Support (green) = price floors where buyers tend to step in. Resistance (red) = ceilings where sellers appear. The number is how many times price touched that level — more touches = stronger.",
+      agreement: "How many of the five signals point the same way as the overall call. High agreement = a clearer, more reliable read; low agreement = signals conflict, so be cautious.",
+      sector: "Compares the stock's move today against its sector's average and the whole Nifty 200. 'Leading' = outperforming both (relative strength, bullish); 'Lagging' = underperforming both (weak). A stock rising less than its sector is actually weak.",
     };
     function info(key) {
       return `<i class="info">i<span class="tip">${GLOSSARY[key]}</span></i>`;
     }
 
+    let lastPatternSig = null;
     function renderPattern(p) {
+      // Skip rebuilding the box if nothing changed (avoids the 30s poll wiping
+      // the backtest results and the user's risk-panel inputs).
+      const psig = cacheKey() + "|" + p.pattern + "|" + p.current_price + "|" + p.target + "|" + p.confidence;
+      if (psig === lastPatternSig) return;
+      lastPatternSig = psig;
       const tgt = p.target != null ? `₹${p.target}` : "—";
       const brk = p.breakout_level != null ? `₹${p.breakout_level}` : "—";
       const move = p.projected_move_pct != null ? `${p.projected_move_pct > 0 ? "+" : ""}${p.projected_move_pct}%` : "—";
@@ -696,9 +1079,98 @@
         <div style="margin-top:12px"><span class="status">Confidence: ${p.confidence}%${info("confidence")}</span>
           <div class="conf-bar"><div class="conf-fill" style="width:${p.confidence}%"></div></div></div>
         <div class="rationale">${p.rationale}</div>
+        ${p.target != null ? riskPanel(p) : ""}
+        ${p.target != null ? '<div id="backtestSlot" class="backtest-slot"><div class="bt-loading">Backtesting this pattern on history…</div></div>' : ""}
         <div id="explainSlot">${p.target != null ? ssaiButton("explainBtn", "Explain this pattern") : ""}</div>
         <div class="disclaimer">⚠ ${p.disclaimer}</div>`;
       restoreAI("explain", "explainSlot");
+      if (p.target != null) {
+        wireRiskPanel(p);
+        // Only (re)fetch the backtest when the ticker+pattern actually changed,
+        // so the 30s poll doesn't refetch or reset what the user typed.
+        const sig = cacheKey() + "|" + p.pattern;
+        if (sig !== lastBacktestSig) { lastBacktestSig = sig; loadBacktest(cacheKey()); }
+      } else { lastBacktestSig = null; }
+    }
+    let lastBacktestSig = null;
+
+    // ---- Risk & position sizing (pure math, uses pattern entry/target) ----
+    function pgCashDefault() {
+      try {
+        const s = JSON.parse(localStorage.getItem("stocksense_playground_v1"));
+        if (s && typeof s.cash === "number" && s.cash > 0) return Math.round(s.cash);
+      } catch (e) {}
+      return 100000;
+    }
+    function riskPanel(p) {
+      const entry = p.current_price;
+      // Default stop = mirror of the target (≈1:1), the same basis as the backtest.
+      const risk = Math.abs(p.target - entry);
+      const stop = p.signal === "bearish" ? entry + risk : entry - risk;
+      return `
+        <div class="risk-box">
+          <div class="risk-head">Risk &amp; position sizing${info("risk")}</div>
+          <div class="risk-inputs">
+            <label>Capital ₹<input id="riskCapital" type="number" min="0" value="${pgCashDefault()}"></label>
+            <label>Risk %${info("riskpct")}<input id="riskPct" type="number" min="0.1" step="0.1" value="1"></label>
+            <label>Stop ₹<input id="riskStop" type="number" step="0.05" value="${stop.toFixed(2)}"></label>
+          </div>
+          <div id="riskOut" class="risk-out"></div>
+        </div>`;
+    }
+    function wireRiskPanel(p) {
+      const recompute = () => {
+        const entry = p.current_price;
+        const target = p.target;
+        const capital = parseFloat($("riskCapital").value) || 0;
+        const riskPct = parseFloat($("riskPct").value) || 0;
+        const stop = parseFloat($("riskStop").value);
+        const perShareRisk = Math.abs(entry - stop);
+        const out = $("riskOut");
+        if (!perShareRisk || !capital || !riskPct) { out.innerHTML = `<div class="risk-warn">Enter capital, risk % and a stop different from entry.</div>`; return; }
+        const riskAmt = capital * riskPct / 100;
+        const shares = Math.floor(riskAmt / perShareRisk);
+        const deployed = shares * entry;
+        const reward = Math.abs(target - entry);
+        const rr = perShareRisk ? reward / perShareRisk : 0;
+        const maxLoss = shares * perShareRisk;
+        const potGain = shares * reward;
+        const rrCls = rr >= 2 ? "good" : rr >= 1 ? "mid" : "bad";
+        const overCapital = deployed > capital;
+        out.innerHTML = `
+          <div class="kv"><span>Shares to buy${info("shares")}</span><span><b>${shares.toLocaleString("en-IN")}</b></span></div>
+          <div class="kv"><span>Risk : Reward${info("rr")}</span><span class="rr-${rrCls}"><b>${rr.toFixed(2)} : 1</b></span></div>
+          <div class="kv"><span>Capital deployed</span><span>₹${Math.round(deployed).toLocaleString("en-IN")}${overCapital ? ' ⚠' : ''}</span></div>
+          <div class="kv"><span>Max loss if stop hits</span><span class="pnl-neg">−₹${Math.round(maxLoss).toLocaleString("en-IN")}</span></div>
+          <div class="kv"><span>Potential gain at target</span><span class="pnl-pos">+₹${Math.round(potGain).toLocaleString("en-IN")}</span></div>
+          ${overCapital ? `<div class="risk-warn">⚠ Position exceeds your capital — lower risk % or capital is too small for this stop distance.</div>` : ""}`;
+      };
+      ["riskCapital", "riskPct", "riskStop"].forEach((id) => $(id).addEventListener("input", recompute));
+      recompute();
+    }
+
+    // ---- Pattern backtest (track record on this stock's own history) ----
+    async function loadBacktest(ticker) {
+      const slot = $("backtestSlot");
+      if (!slot) return;
+      try {
+        const res = await fetch(`/pattern-backtest?ticker=${encodeURIComponent(ticker)}&tf=${tf}`);
+        if (!res.ok) { slot.remove(); return; }
+        const d = await res.json();
+        if (!d.available) { slot.innerHTML = `<div class="bt-note">${d.reason || "Backtest unavailable."}</div>`; return; }
+        if (!d.occurrences) { slot.innerHTML = `<div class="bt-note">${d.note || "No prior occurrences found."}</div>`; return; }
+        const moveCls = d.avg_move_pct >= 0 ? "pnl-pos" : "pnl-neg";
+        const hitCls = d.hit_rate >= 50 ? "rr-good" : d.hit_rate >= 35 ? "rr-mid" : "rr-bad";
+        slot.innerHTML = `
+          <div class="bt-head">Backtest · this pattern on ${ticker}${info("backtest")}</div>
+          <div class="bt-stats">
+            <div class="bt-stat"><span>${d.occurrences}</span><label>occurrences<br>(${d.years}y)</label></div>
+            <div class="bt-stat"><span class="${hitCls}">${d.hit_rate}%</span><label>reached target</label></div>
+            <div class="bt-stat"><span class="${moveCls}">${d.avg_move_pct >= 0 ? "+" : ""}${d.avg_move_pct}%</span><label>avg move after</label></div>
+          </div>
+          ${d.low_confidence ? `<div class="bt-warn">⚠ Only ${d.occurrences} past cases — low confidence, treat as a hint.</div>` : ""}
+          <div class="bt-foot">Past behaviour ≠ future results.</div>`;
+      } catch (e) { slot.remove(); }
     }
 
     // A reusable SSAI button. AI runs only when clicked — never on the poll.
@@ -906,9 +1378,12 @@
       }
     }
 
-    // refresh() never triggers AI — only free data (chart, metrics, headlines).
-    // AI runs solely via the per-grid SSAI buttons below.
-    async function refresh() {
+    // refresh() never triggers AI — only free data.
+    // `full` = a manual load / ticker change → also refresh fundamentals + news.
+    // The auto-refresh timer passes full=false so it only updates the chart &
+    // pattern (cheap). Fundamentals barely change intraday and yfinance's
+    // .info call is heavily rate-limited, so we don't re-fetch it on a timer.
+    async function refresh(full = false) {
       const ticker = $("ticker").value.trim().toUpperCase();
       if (!ticker) return;
       clearStaleAI();  // drop cached AI from a previous ticker
@@ -916,8 +1391,11 @@
       try {
         await loadCandles(ticker);
         await loadPattern(ticker);
-        loadFundamentals(ticker);
-        loadSentiment(ticker);
+        loadVerdict(ticker);   // pure math, no quota — refresh every cycle
+        if (full) {
+          loadFundamentals(ticker);
+          loadSentiment(ticker);
+        }
         const t = new Date().toLocaleTimeString();
         $("status").textContent = `updated ${t}`;
       } catch (e) {
@@ -928,15 +1406,27 @@
 
     function startPolling() {
       stopPolling();
-      if ($("liveToggle").checked) pollTimer = setInterval(refresh, POLL_MS);
+      // Timer refresh is chart/pattern only (full=false) to spare yfinance limits.
+      if ($("liveToggle").checked) pollTimer = setInterval(() => refresh(false), POLL_MS);
     }
     function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
 
-    $("loadBtn").onclick = () => { acClose(); refresh(); startPolling(); };
+    $("loadBtn").onclick = () => { acClose(); refresh(true); startPolling(); };
     $("liveToggle").onchange = startPolling;
     $("tfSelect").addEventListener("change", (e) => {
       tf = e.target.value;
-      refresh();
+      refresh(true);
+    });
+    // Changing the verdict risk profile just re-weights — only reload the verdict.
+    $("verdictRisk").addEventListener("change", () => {
+      const t = $("ticker").value.trim().toUpperCase();
+      if (t) loadVerdict(t);
+    });
+    // Toggle support/resistance levels on the chart.
+    $("srToggle").addEventListener("click", () => {
+      showSR = !showSR;
+      $("srToggle").classList.toggle("active", showSR);
+      drawSR();
     });
 
     // All SSAI buttons route here — each fires AI only for its own grid.
@@ -951,6 +1441,91 @@
       if (!btn || !SSAI[btn.id]) return;
       btn.disabled = true;
       SSAI[btn.id]($("ticker").value.trim().toUpperCase());
+    });
+
+    // ----------------------------------------------------------------------
+    // Price / RSI alerts — stored in localStorage, checked on every refresh.
+    // ----------------------------------------------------------------------
+    const ALERT_KEY = "stocksense_alerts_v1";
+    let lastVals = {};   // symbol -> {price, rsi} from the previous check (for cross detection)
+    function loadAlerts() { try { return JSON.parse(localStorage.getItem(ALERT_KEY)) || []; } catch (e) { return []; } }
+    function saveAlerts(a) { localStorage.setItem(ALERT_KEY, JSON.stringify(a)); }
+
+    function renderAlerts() {
+      const el = $("alertList");
+      if (!el) return;
+      const ticker = $("ticker").value.trim().toUpperCase();
+      const all = loadAlerts();
+      const mine = all.filter((a) => a.symbol === ticker);
+      if (!mine.length) { el.innerHTML = `<div class="alert-empty">No alerts for ${ticker || "this stock"}.</div>`; return; }
+      el.innerHTML = mine.map((a) => `
+        <div class="alert-item ${a.triggered ? "alert-fired" : ""}">
+          <span>${a.metric.toUpperCase()} ${a.op === "above" ? "↗ above" : "↘ below"} <b>${a.value}</b></span>
+          <span class="alert-state">${a.triggered ? "✓ fired " + (a.firedAt || "") : "watching"}</span>
+          <button class="alert-del" data-id="${a.id}">✕</button>
+        </div>`).join("");
+    }
+
+    function addAlert() {
+      const ticker = $("ticker").value.trim().toUpperCase();
+      if (!ticker) return;
+      const value = parseFloat($("alertValue").value);
+      if (isNaN(value)) { $("alertValue").focus(); return; }
+      const all = loadAlerts();
+      all.push({
+        id: Date.now(), symbol: ticker,
+        metric: $("alertMetric").value, op: $("alertOp").value,
+        value, triggered: false,
+      });
+      saveAlerts(all);
+      $("alertValue").value = "";
+      renderAlerts();
+      // Ask for notification permission on first alert.
+      if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+    }
+
+    function deleteAlert(id) {
+      saveAlerts(loadAlerts().filter((a) => a.id !== id));
+      renderAlerts();
+    }
+
+    function fireNotification(a, current) {
+      const title = `${a.symbol} alert`;
+      const body = `${a.metric.toUpperCase()} ${a.op} ${a.value} — now ${current}`;
+      if ("Notification" in window && Notification.permission === "granted") {
+        try { new Notification(title, { body }); } catch (e) {}
+      }
+      // Always also flash a banner in the status line.
+      $("status").textContent = `🔔 ${body}`;
+    }
+
+    // Called from loadCandles with the latest price + rsi for the loaded symbol.
+    function checkAlerts(symbol, price, rsi) {
+      const all = loadAlerts();
+      const prev = lastVals[symbol] || {};
+      let changed = false;
+      for (const a of all) {
+        if (a.symbol !== symbol || a.triggered) continue;
+        const cur = a.metric === "price" ? price : rsi;
+        if (cur == null) continue;
+        // Fire the first time the condition is satisfied (covers both a fresh
+        // cross and an alert set while already past the threshold).
+        const hit = a.op === "above" ? cur >= a.value : cur <= a.value;
+        if (hit) {
+          a.triggered = true;
+          a.firedAt = new Date().toLocaleTimeString();
+          fireNotification(a, a.metric === "price" ? `₹${cur}` : cur.toFixed(0));
+          changed = true;
+        }
+      }
+      lastVals[symbol] = { price, rsi };
+      if (changed) { saveAlerts(all); renderAlerts(); }
+    }
+
+    $("alertAdd").addEventListener("click", addAlert);
+    $("alertValue").addEventListener("keydown", (e) => { if (e.key === "Enter") addAlert(); });
+    $("alertList").addEventListener("click", (e) => {
+      const b = e.target.closest(".alert-del"); if (b) deleteAlert(parseInt(b.dataset.id));
     });
 
     // ----------------------------------------------------------------------
@@ -1010,7 +1585,7 @@
     function acSelect(sym) {
       $("ticker").value = sym;
       acClose();
-      refresh();
+      refresh(true);
       startPolling();
     }
 
@@ -1031,7 +1606,7 @@
       else if (e.key === "Enter") {
         e.preventDefault();
         if (open && acIndex >= 0) acSelect(acItems[acIndex].symbol);
-        else { acClose(); refresh(); startPolling(); }
+        else { acClose(); refresh(true); startPolling(); }
       } else if (e.key === "Escape") { acClose(); }
     });
     acEl().addEventListener("mousedown", (e) => {
@@ -1046,8 +1621,8 @@
     $("rsiHead").innerHTML = `RSI (14)${info("rsi")}`;
     $("macdHead").innerHTML = `MACD (12,26,9)${info("macd")}`;
 
-    // initial load — free data only; no AI until an SSAI button is clicked.
-    refresh();
+    // initial load — full (chart + fundamentals + news); no AI until SSAI click.
+    refresh(true);
     startPolling();
 
     // ======================================================================
@@ -1059,12 +1634,60 @@
       $("playgroundView").style.display = isDash ? "none" : "block";
       $("dashControls").style.display = isDash ? "flex" : "none";
       document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === view));
+      $("moversPanel").style.display = isDash ? "grid" : "none";
       if (!isDash) Playground.onShow();
     }
     document.querySelector(".tabs").addEventListener("click", (e) => {
       const t = e.target.closest(".tab");
       if (t) switchView(t.dataset.view);
     });
+
+    // ===== Top movers (gainers/losers) =====
+    function moverRow(m, rank, dir) {
+      const cls = m.change_pct >= 0 ? "up" : "down";
+      const sign = m.change_pct >= 0 ? "+" : "";
+      return `<div class="mover" data-sym="${m.symbol}">
+        <span class="mover-rank">${rank}</span>
+        <span class="mover-mid">
+          <span class="mover-sym">${m.symbol}</span>
+          <div class="mover-name">${(m.name || "").replace(/</g, "&lt;")}</div>
+        </span>
+        <span class="mover-price">₹${m.price}</span>
+        <span class="mover-chg ${cls}">${sign}${m.change_pct}%</span>
+      </div>`;
+    }
+    async function loadMovers() {
+      try {
+        const res = await fetch("/movers");
+        const d = await res.json();
+        const renderInto = (id, list) => {
+          $(id).innerHTML = list.length
+            ? list.map((m, i) => moverRow(m, i + 1)).join("")
+            : `<div class="movers-empty">Data temporarily unavailable (rate-limited). Retrying shortly.</div>`;
+        };
+        renderInto("moversBuy", d.gainers || []);
+        renderInto("moversSell", d.losers || []);
+        if (d.as_of) {
+          const t = new Date(d.as_of * 1000).toLocaleTimeString();
+          const note = `<div class="movers-asof">${d.universe} stocks · as of ${t}</div>`;
+          $("moversBuy").insertAdjacentHTML("beforeend", note);
+        }
+      } catch (e) {
+        $("moversBuy").innerHTML = `<div class="movers-empty">Could not load.</div>`;
+        $("moversSell").innerHTML = "";
+      }
+    }
+    // Click a mover → load that stock in the dashboard.
+    $("moversPanel").addEventListener("click", (e) => {
+      const row = e.target.closest(".mover");
+      if (!row) return;
+      $("ticker").value = row.dataset.sym;
+      refresh(true);
+      startPolling();
+      $("chartBox").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    loadMovers();
+    setInterval(loadMovers, 300000);  // refresh every 5 min (matches server cache)
 
     // ======================================================================
     // PLAYGROUND — dummy trading, all state in localStorage
@@ -1150,7 +1773,19 @@
       }
 
       // ---- placing ----
-      function place() {
+      // Fetch the dashboard's pattern prediction for a symbol (free, no AI),
+      // so we can grade the trade against it later. Returns null if none.
+      async function fetchPrediction(symbol) {
+        try {
+          const res = await fetch(`/pattern?ticker=${encodeURIComponent(symbol)}&tf=1D`);
+          if (!res.ok) return null;
+          const p = await res.json();
+          if (!p || p.target == null || (p.signal !== "bullish" && p.signal !== "bearish")) return null;
+          return { signal: p.signal, target: p.target, pattern: p.pattern, entryRef: p.current_price };
+        } catch (e) { return null; }
+      }
+
+      async function place() {
         const symbol = curSymbol();
         const spot = px(symbol);
         if (!spot) { msg("Price not loaded yet — try again in a moment.", false); return; }
@@ -1160,6 +1795,8 @@
         if (side === "BUY" && value > state.cash) {
           msg(`Not enough cash. Need ${fmt(value)}, have ${fmt(state.cash)}.`, false); return;
         }
+        msg("Placing order…", true);
+        const prediction = await fetchPrediction(symbol);   // grade against this
         const order = {
           id: state.nextId++, symbol, side, segment: seg, orderType: ot, qty,
           limit: parseFloat($("pgLimit").value) || null,
@@ -1167,6 +1804,7 @@
           optType: seg === "OPTIONS" ? $("pgOptType").value : null,
           strike: seg === "OPTIONS" ? parseFloat($("pgStrike").value) : null,
           expiry: seg !== "INTRADAY" ? $("pgExpiry").value : null,
+          prediction,
           status: "PENDING", placedAt: new Date().toLocaleTimeString(),
         };
         // Market orders fill immediately; others wait for the trigger.
@@ -1196,7 +1834,8 @@
         const dir = o.side === "BUY" ? 1 : -1;
         if (!pos) {
           pos = { key, label: instrumentLabel(o), symbol: o.symbol, segment: o.segment,
-                  qty: 0, avg: 0, optType: o.optType, strike: o.strike };
+                  qty: 0, avg: 0, optType: o.optType, strike: o.strike,
+                  prediction: o.prediction || null, entrySide: o.side };
           state.positions.push(pos);
         }
         const newQty = pos.qty + dir * o.qty;
@@ -1249,15 +1888,42 @@
         const pnl = (price - p.avg) * p.qty;     // qty sign carries direction
         const margin = Math.abs(p.qty) * p.avg * (p.segment === "FUTURES" ? FUT_MARGIN : 1);
         state.cash += margin + pnl;              // release margin + realised P&L
+        const verdict = gradeInference(p, pnl);
         state.history.unshift({
           id: state.nextId++, symbol: p.symbol, side: p.qty > 0 ? "SELL" : "BUY",
           segment: p.segment, orderType: "SQUARE-OFF", qty: Math.abs(p.qty),
           status: "EXECUTED", fillPrice: price, filledAt: new Date().toLocaleTimeString(),
-          optType: p.optType, strike: p.strike,
+          optType: p.optType, strike: p.strike, pnl: Math.round(pnl),
+          prediction: p.prediction || null, verdict,
         });
         state.positions = state.positions.filter((x) => x.key !== key);
         save(); renderAll();
-        msg(`Squared off ${p.label} — realised P&L ${sign(pnl)}`, pnl >= 0);
+        const vtxt = verdict ? ` · ${verdict.label}` : "";
+        msg(`Squared off ${p.label} — realised P&L ${sign(pnl)}${vtxt}`, pnl >= 0);
+      }
+
+      // 4-way inference grade: did you follow the dashboard's signal, and did it pay?
+      function gradeInference(p, pnl) {
+        const pred = p.prediction;
+        if (!pred) return { kind: "none", label: "No prediction was on record", icon: "·", cls: "v-none" };
+        const myDir = (p.entrySide === "BUY" || p.qty > 0) ? "bullish" : "bearish";
+        const followed = myDir === pred.signal;
+        const profit = pnl >= 0;
+        if (followed && profit)
+          return { kind: "correct", icon: "✓", cls: "v-correct",
+            label: "Inference correct",
+            why: `You traded WITH the ${pred.signal} signal and it paid off.` };
+        if (followed && !profit)
+          return { kind: "wrong", icon: "✗", cls: "v-wrong",
+            label: "Inference wrong",
+            why: `You followed the ${pred.signal} signal but lost — the dashboard's read failed here.` };
+        if (!followed && !profit)
+          return { kind: "ignored", icon: "!", cls: "v-ignored",
+            label: "Signal was right, you went against it",
+            why: `The ${pred.signal} signal was correct; trading against it lost money.` };
+        return { kind: "lucky", icon: "⚠", cls: "v-lucky",
+          label: "Won against the signal",
+          why: `You profited despite trading against the ${pred.signal} signal — luck or the dashboard was wrong.` };
       }
 
       // ---- rendering ----
@@ -1288,8 +1954,11 @@
           const price = spot == null ? null : (p.segment === "OPTIONS" ? optionPremium(spot, p.strike, p.optType) : spot);
           const pl = positionPnl(p);
           const dirTag = p.qty > 0 ? "buy" : "sell";
+          const pred = p.prediction
+            ? `<div class="pos-pred">Dashboard predicted: <b class="${sigClass(p.prediction.signal)}">${p.prediction.signal.toUpperCase()}</b> · target ₹${p.prediction.target}</div>`
+            : `<div class="pos-pred pos-pred-none">No pattern prediction was on record at entry</div>`;
           return `<tr>
-            <td class="pg-sym-cell">${p.label}<span class="pg-tag ${dirTag}">${p.qty > 0 ? "LONG" : "SHORT"}</span></td>
+            <td class="pg-sym-cell">${p.label}<span class="pg-tag ${dirTag}">${p.qty > 0 ? "LONG" : "SHORT"}</span>${pred}</td>
             <td>${Math.abs(p.qty)}</td>
             <td>${fmt(p.avg)}</td>
             <td>${price == null ? "—" : fmt(price)}</td>
@@ -1316,6 +1985,31 @@
           <thead><tr><th>Instrument</th><th>Type</th><th>Qty</th><th>Price</th><th>Status</th><th></th></tr></thead>
           <tbody>${rows}</tbody></table>`;
       }
+      function verdictCell(o) {
+        const v = o.verdict;
+        if (!v || v.kind === "none") return `<span class="v-cell v-none">—</span>`;
+        return `<span class="v-cell ${v.cls}">${v.icon} ${v.label}` +
+               `<span class="tip">${v.why}</span></span>`;
+      }
+      function scorecard() {
+        const graded = state.history.filter((o) => o.verdict && o.verdict.kind !== "none");
+        if (!graded.length) return "";
+        const correct = graded.filter((o) => o.verdict.kind === "correct").length;
+        const wrong = graded.filter((o) => o.verdict.kind === "wrong").length;
+        const ignored = graded.filter((o) => o.verdict.kind === "ignored").length;
+        const lucky = graded.filter((o) => o.verdict.kind === "lucky").length;
+        const acc = Math.round(correct / graded.length * 100);
+        return `<div class="scorecard">
+          <div class="sc-head">Your inference accuracy${info("inference")}</div>
+          <div class="sc-main"><b>${correct}/${graded.length}</b> correct · <b>${acc}%</b></div>
+          <div class="sc-break">
+            <span class="v-correct">✓ ${correct} correct</span>
+            <span class="v-wrong">✗ ${wrong} wrong</span>
+            <span class="v-ignored">! ${ignored} ignored signal</span>
+            <span class="v-lucky">⚠ ${lucky} lucky</span>
+          </div>
+        </div>`;
+      }
       function renderHistory() {
         const el = $("pgPanelHistory");
         if (!state.history.length) { el.innerHTML = `<div class="pg-empty">No trades yet.</div>`; return; }
@@ -1324,10 +2018,10 @@
           <td class="pg-sym-cell">${instrumentLabel(o)}<span class="pg-tag ${(o.side||'').toLowerCase()}">${o.side}</span></td>
           <td>${o.orderType}</td><td>${o.qty}</td>
           <td>${o.fillPrice != null ? fmt(o.fillPrice) : "—"}</td>
-          <td><span class="pg-status-pill pg-status-${o.status}">${o.status}</span></td>
+          <td>${verdictCell(o)}</td>
         </tr>`).join("");
-        el.innerHTML = `<table class="pg-table">
-          <thead><tr><th>Time</th><th>Instrument</th><th>Type</th><th>Qty</th><th>Price</th><th>Status</th></tr></thead>
+        el.innerHTML = scorecard() + `<table class="pg-table">
+          <thead><tr><th>Time</th><th>Instrument</th><th>Type</th><th>Qty</th><th>Price</th><th>Inference</th></tr></thead>
           <tbody>${rows}</tbody></table>`;
       }
       function renderAll() { renderWallet(); renderPositions(); renderOrders(); renderHistory(); }

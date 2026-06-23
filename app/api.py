@@ -216,6 +216,40 @@ def symbols():
     return {"count": len(data), "symbols": data}
 
 
+@app.get("/pattern-backtest")
+def pattern_backtest(ticker: str = Q(...), tf: str = Q("1D")):
+    """How the currently-detected pattern played out on this stock historically."""
+    from app.tools.backtest import backtest_pattern
+    result = pattern(ticker=ticker, tf=tf)  # detect current pattern (may raise)
+    name = result.get("pattern")
+    return backtest_pattern(ticker, name)
+
+
+@app.get("/verdict")
+def verdict(ticker: str = Q(...), tf: str = Q("1D"), risk: str = Q("moderate")):
+    """Weighted multi-signal technical verdict (pattern+RSI+MACD+trend+volume)."""
+    from app.tools.verdict import compute_verdict
+    try:
+        return compute_verdict(ticker, tf, risk)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/sector-context")
+def sector_context(ticker: str = Q(...)):
+    """How the stock is doing vs. its sector and vs. the Nifty 200 (rel. strength)."""
+    from app.tools.movers import get_sector_context
+    return get_sector_context(ticker)
+
+
+@app.get("/movers")
+def movers():
+    """Top 5 gainers / losers across the Nifty 200 (price-change proxy for
+    buying / selling pressure). Cached ~5 min; batched single download."""
+    from app.tools.movers import get_movers
+    return get_movers()
+
+
 @app.get("/timeframes")
 def timeframes():
     return {"timeframes": list(TIMEFRAMES.keys())}
